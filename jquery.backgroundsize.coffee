@@ -1,80 +1,137 @@
-{ extend, Tween, map } = $
+{ extend, Tween } = $
 
-_init = ( tween ) ->
-  { elem, prop, end } = tween
+# background-position logic and general approach from Extending jQuery
 
-  extend tween,
-   start: _parse $( elem ).css prop
-   end: _parse end
-   set: yes
+map = ( arr, clb ) ->
+  clb elem, i for elem, i in arr
 
-  { start, end } = tween
+registerAnimationHandler = ({
+  propName
+  parse
+  initTweenEnd
+  cssValFromInitializedTween
+}) ->
+  parsedTween = ( tween ) ->
+    parse $( tween.elem ).css propName
 
-  map( endBg, ( val, i ) ->
-               [ _rel_op, _amount ] = val
-               return val unless _rel_op
+  init = ( tween ) ->
+    tween.start = parsedTween tween
 
-               val[ 1 ] = start[ bgIndex ][ i ][ 1 ] + _amount * if _rel_op is '-='
-                                                                     -1
-                                                                 else
-                                                                     1 ) for endBg, bgIndex in end
+    tween.end = initTweenEnd { tween, parse }
 
-_parse = ( val ) ->
-  for bg in val.split /\s*,\s*/
-    for dim in bg.split /\s+/
-      _match = dim
-                .match ///
-                        ^
-                        (
-                         [+-]
-                         =
-                        ) ?
-                        (
-                         [+-] ?
-                         \d +
-                         (?:
-                          \.
-                          \d *
-                         ) ?
-                        )
-                        (
-                         . *
-                        )
-                        $
-                       ///
-      [
-       _match[ 1 ],
-       parseFloat( _match[ 2 ] ),
-       _match[ 3 ] or 'px'
-      ]
+    tween.set = yes
+    console.log { tween }
 
-_get = ( tween ) ->
-  _parse $( tween.elem ).css tween.prop
+  Tween.propHooks[propName] =
+    get: parsedTween
+    set: ( tween ) ->
+      init tween unless tween.set
 
-_set = ( tween ) ->
-  _init tween unless tween.set
-  { elem,
-    prop,
-    pos,
-    unit,
-    start,
-    end } = tween
+      $ tween.elem
+      .css propName,
+        cssValFromInitializedTween tween
 
-  ( for bg, bgIndex in start
-      _span = ( axis ) ->
-        end[ bgIndex ][ axis ][ 1 ] - start[ bgIndex ][ axis ][ 1 ]
-      _adjusted = ( axis ) ->
-        start[ bgIndex ][ axis ][ 1 ] + pos * _span axis
-      $( elem )
-       .css prop,
-            ( "#{ _adjusted axis }#{ unit }" for axis in [ 0, 1 ] )
-             .join ' ' )
-   .join ', '
+registerAnimationHandler
+  propName: 'backgroundPosition'
+  parse: ( val ) ->
+    for bg in (val || '').split /\s*,\s*/
+      dims = do ->
+        unstandardizedDims = bg.split /\s+/
 
-extend Tween.propHooks,
- backgroundSize:
-  get: _get
-  set: _set
- backgroundPosition:
-  get: _get
-  set: _set
+        if unstandardizedDims.length is 1
+          unstandardizedDims =
+            if unstandardizedDims[0] in ['top', 'bottom']
+              [
+                '50%'
+                unstandardizedDims[0]
+              ]
+            else
+              [
+                unstandardizedDims[0]
+                '50%'
+              ]
+
+        map(
+          unstandardizedDims
+          ( dim ) ->
+            presets =
+              center: '50%'
+              left:   '0%'
+              right:  '100%'
+              top:    '0%'
+              bottom: '100%'
+
+            "#{ presets[dim] or dim }"
+        )
+
+      for dim in dims
+        _match =
+          dim
+          .match ///
+            ^
+            ( # relative
+             [+-]
+             =
+            ) ?
+            ( # numeric value
+             [+-] ?
+             \d +
+             (?:
+              \.
+              \d *
+             ) ?
+            )
+            ( # unit
+             . *
+            )
+            $
+          ///
+
+        [
+          _match[1]
+          parseFloat _match[2]
+          _match[3] or 'px'
+        ]
+
+  initTweenEnd: ({ tween, parse }) ->
+    { start, end } = tween
+
+    for endBg, bgIndex in parse end
+      map endBg, ( val, i ) ->
+        [rel_op, amount] = val
+        return val unless rel_op
+
+        val[1] =
+          start[bgIndex][i][1] +
+            amount * if rel_op is '-=' then -1 else 1
+
+        val
+
+  cssValFromInitializedTween: ( tween ) ->
+    {
+      pos
+      start
+      end
+    } = tween
+
+    (
+      for bg, bgIndex in start
+        bgStart = start[bgIndex]
+        bgEnd   = end[  bgIndex]
+
+        _span = ( dim ) ->
+          bgEnd[dim][1] - bgStart[dim][1]
+        _adjusted = ( dim ) ->
+          bgStart[dim][1] + pos * _span dim
+        ( "#{ _adjusted dim }#{ bgStart[dim][2] }" for dim in [0, 1])
+        .join ' '
+    )
+    .join ', '
+
+# extend Tween.propHooks,
+#   backgroundSize:
+#     get: _get
+#     set: _set
+#   backgroundPosition:
+#     get: _get
+#     set: _set
