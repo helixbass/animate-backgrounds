@@ -1,4 +1,4 @@
-{ extend, Tween } = $
+{ extend, Tween, isArray } = $
 
 # background-position logic and general approach from Extending jQuery
 
@@ -20,7 +20,7 @@ registerAnimationHandler = ({
     tween.end = initTweenEnd { tween, parse }
 
     tween.set = yes
-    console.log { tween }
+    # console.log { tween }
 
   Tween.propHooks[propName] =
     get: parsedTween
@@ -125,6 +125,103 @@ registerAnimationHandler
           bgStart[dim][1] + pos * _span dim
         ( "#{ _adjusted dim }#{ bgStart[dim][2] }" for dim in [0, 1])
         .join ' '
+    )
+    .join ', '
+
+registerAnimationHandler
+  propName: 'backgroundSize'
+  parse: ( val ) ->
+    for bg in (val || '').split /\s*,\s*/
+      dims = do ->
+        return [bg, ''] if bg in ['contain', 'cover']
+
+        suppliedDims = bg.split /\s+/
+
+        if suppliedDims.length is 1
+          [
+            suppliedDims[0]
+            'auto'
+          ]
+        else
+          suppliedDims
+
+      for dim in dims
+        _match =
+          dim
+          .match ///
+            ^
+            (?:
+             (?: # non-keyword (ie numeric) value
+              ( # relative
+               [+-]
+               =
+              ) ?
+              ( # numeric value
+               [+-] ?
+               \d +
+               (?:
+                \.
+                \d *
+               ) ?
+              )
+              ( # unit
+               . *
+              )
+             )
+             | auto
+            )
+            $
+          ///
+
+        unless _match?[2]
+          dim
+        else
+          [
+            _match[1]
+            parseFloat _match[2]
+            _match[3] or 'px'
+          ]
+
+  initTweenEnd: ({ tween, parse }) ->
+    { start, end } = tween
+
+    for endBg, bgIndex in parse end
+      map endBg, ( val, i ) ->
+        return val unless isArray val
+        [rel_op, amount] = val
+        return val unless rel_op
+
+        val[1] =
+          start[bgIndex][i][1] +
+            amount * if rel_op is '-=' then -1 else 1
+
+        val
+
+  cssValFromInitializedTween: ( tween ) ->
+    {
+      pos
+      start
+      end
+    } = tween
+
+    (
+      for bg, bgIndex in start
+        bgStart = start[bgIndex]
+        bgEnd   = end[  bgIndex]
+
+        _span = ( dim ) ->
+          bgEnd[dim][1] - bgStart[dim][1]
+        _adjusted = ( dim ) ->
+          bgStart[dim][1] + pos * _span dim
+        (
+          for dim in [0, 1]
+            bgStartDim = bgStart[dim]
+            if isArray bgStartDim
+              "#{ _adjusted dim }#{ bgStartDim[2] }"
+            else bgStartDim
+        )
+        .join ' '
+        .trim()
     )
     .join ', '
 
