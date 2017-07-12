@@ -1,4 +1,4 @@
-{ extend, Tween, isArray } = $
+{ extend, Tween } = $
 
 # background-position logic and general approach from Extending jQuery
 
@@ -20,7 +20,7 @@ registerAnimationHandler = ({
     tween.end = initTweenEnd { tween, parse }
 
     tween.set = yes
-    # console.log { tween }
+    console.log { tween }
 
   Tween.propHooks[propName] =
     get: parsedTween
@@ -87,22 +87,20 @@ registerAnimationHandler
             $
           ///
 
-        [
-          _match[1]
-          parseFloat _match[2]
-          _match[3] or 'px'
-        ]
+        rel_op: _match[1]
+        amount: parseFloat _match[2]
+        unit: _match[3] or 'px'
 
   initTweenEnd: ({ tween, parse }) ->
     { start, end } = tween
 
     for endBg, bgIndex in parse end
       map endBg, ( val, i ) ->
-        [rel_op, amount] = val
+        {rel_op, amount} = val
         return val unless rel_op
 
-        val[1] =
-          start[bgIndex][i][1] +
+        val.amount =
+          start[bgIndex][i].amount +
             amount * if rel_op is '-=' then -1 else 1
 
         val
@@ -115,15 +113,14 @@ registerAnimationHandler
     } = tween
 
     (
-      for bg, bgIndex in start
-        bgStart = start[bgIndex]
-        bgEnd   = end[  bgIndex]
+      for bgStart, bgIndex in start
+        bgEnd = end[bgIndex]
 
         _span = ( dim ) ->
-          bgEnd[dim][1] - bgStart[dim][1]
+          bgEnd[dim].amount - bgStart[dim].amount
         _adjusted = ( dim ) ->
-          bgStart[dim][1] + pos * _span dim
-        ( "#{ _adjusted dim }#{ bgStart[dim][2] }" for dim in [0, 1])
+          bgStart[dim].amount + pos * _span dim
+        ( "#{ _adjusted dim }#{ bgStart[dim].unit }" for dim in [0, 1])
         .join ' '
     )
     .join ', '
@@ -137,13 +134,12 @@ registerAnimationHandler
 
         suppliedDims = bg.split /\s+/
 
-        if suppliedDims.length is 1
-          [
-            suppliedDims[0]
-            'auto'
-          ]
-        else
-          suppliedDims
+        return suppliedDims unless suppliedDims.length is 1
+
+        [
+          suppliedDims[0]
+          'auto'
+        ]
 
       for dim in dims
         _match =
@@ -176,23 +172,21 @@ registerAnimationHandler
         unless _match?[2]
           dim
         else
-          [
-            _match[1]
-            parseFloat _match[2]
-            _match[3] or 'px'
-          ]
+          rel_op: _match[1]
+          amount: parseFloat _match[2]
+          unit: _match[3] or 'px'
 
   initTweenEnd: ({ tween, parse }) ->
     { start, end } = tween
 
     for endBg, bgIndex in parse end
       map endBg, ( val, i ) ->
-        return val unless isArray val
-        [rel_op, amount] = val
+        return val unless val?.unit
+        {rel_op, amount} = val
         return val unless rel_op
 
-        val[1] =
-          start[bgIndex][i][1] +
+        val.amount =
+          start[bgIndex][i].amount +
             amount * if rel_op is '-=' then -1 else 1
 
         val
@@ -205,19 +199,18 @@ registerAnimationHandler
     } = tween
 
     (
-      for bg, bgIndex in start
-        bgStart = start[bgIndex]
-        bgEnd   = end[  bgIndex]
+      for bgStart, bgIndex in start
+        bgEnd = end[bgIndex]
 
         _span = ( dim ) ->
-          bgEnd[dim][1] - bgStart[dim][1]
+          bgEnd[dim].amount - bgStart[dim].amount
         _adjusted = ( dim ) ->
-          bgStart[dim][1] + pos * _span dim
+          bgStart[dim].amount + pos * _span dim
         (
           for dim in [0, 1]
             bgStartDim = bgStart[dim]
-            if isArray bgStartDim
-              "#{ _adjusted dim }#{ bgStartDim[2] }"
+            if bgStartDim?.unit
+              "#{ _adjusted dim }#{ bgStartDim.unit }"
             else bgStartDim
         )
         .join ' '
