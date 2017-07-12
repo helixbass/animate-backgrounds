@@ -5,25 +5,26 @@
 map = ( arr, clb ) ->
   clb elem, i for elem, i in arr
 
-registerAnimationHandler = ({
+register_animation_handler = ({
   prop_name, hook_name
   parse
   init_tween_end
   css_val_from_initialized_tween
 }) ->
-  parsedTween = ( tween ) ->
+  parsed_tween = ( tween ) ->
     parse $( tween.elem ).css prop_name
 
   init = ( tween ) ->
-    tween.start = parsedTween tween
+    tween.start = parsed_tween tween
 
     tween.end = init_tween_end { tween, parse }
 
     tween.set = yes
-    console.log { tween }
+
+    console.log {tween}
 
   Tween.propHooks[hook_name ? prop_name] =
-    get: parsedTween
+    get: parsed_tween
     set: ( tween ) ->
       init tween unless tween.set
 
@@ -31,7 +32,7 @@ registerAnimationHandler = ({
       .css prop_name,
         css_val_from_initialized_tween tween
 
-registerAnimationHandler
+register_animation_handler
   prop_name: 'backgroundPosition'
   parse: ( val ) ->
     for bg in (val || '').split /\s*,\s*/
@@ -125,7 +126,7 @@ registerAnimationHandler
     )
     .join ', '
 
-registerAnimationHandler
+register_animation_handler
   prop_name: 'backgroundSize'
   parse: ( val ) ->
     for bg in (val || '').split /\s*,\s*/
@@ -229,8 +230,8 @@ registerAnimationHandler
 _int = ( str ) ->
   parseInt str, 10
 
-registerAnimationHandler
-  hook_name: 'linearGradient'
+gradient_handler = ({function_name, hook_name}) -> {
+  hook_name
   prop_name: 'backgroundImage'
 
   init_tween_end: ({ tween, parse }) ->
@@ -267,38 +268,77 @@ registerAnimationHandler
       match = ///
         ^
         \s *
-        linear-gradient\(
+        #{function_name}\(
         \s *
-        ( # angle
-          - ?
-          \d +
-        )
-        deg
-        \s *
-        ,
-        \s *
-        ( # stops
-          (?:
-            (?:
-              rgb\(
-              [^)] *
-              \)
+        (?: # optional angle/direction
+          (?: # angle or directions
+            ( # angle
+              - ?
+              \d +
             )
+            deg
             |
-            [^)] +
-          ) *
+            to
+            \s +
+            ( # first direction
+              bottom | top | left | right
+            )
+            (?: # second direction
+              \s +
+              ( bottom | top | left | right )
+            )?
+          )
+          \s *
+          ,
+          \s *
+        ) ?
+        ( # stops
+          . +
+          # (?:
+          #   [^()] +
+          #   |
+          #   \( [^)] + \)
+          # ) +
+          # (?:
+          #   rgb\(
+          #   [^\)] *
+          #   \)
+          #   |
+          #   [^\)] +
+          # ) *
         )
         \)
         \s *
         $
       ///.exec image
       return image unless match
-      [all, angle, stops] = match
+      [all, angle, first_direction, second_direction, stops] = match
 
-      angle:
-        _int angle
-      stops:
-        for stop in _top_level_args stops
+      angle: do ->
+        return _int angle if angle
+        if second_direction
+          # TODO: error if first_direction same as second_direction or eg top bottom
+          if 'top' in [first_direction, second_direction]
+            if 'left' in [first_direction, second_direction]
+              315
+            else
+              45
+          else
+            if 'left' in [first_direction, second_direction]
+              225
+            else
+              135
+        else do ->
+          first_direction = 'bottom' unless first_direction
+          switch first_direction
+            when 'top'    then 0
+            when 'bottom' then 180
+            when 'left'   then 270
+            when 'right'  then 90
+            else # TODO: error
+      stops: do ->
+        split_stops = _top_level_args stops
+        for stop, stop_index in split_stops
           match = ///
             ^
             \s *
@@ -328,7 +368,18 @@ registerAnimationHandler
               )
             ) ?
           ///.exec stop
+          # TODO: error if no match
           [all, color, position, unit] = match
+          unless position?
+            position =
+              switch stop_index
+                when 0
+                  0
+                when split_stops.length - 1
+                  100
+                else
+                  # TODO: error
+            unit = '%'
 
           color:
             Color color
@@ -361,9 +412,18 @@ registerAnimationHandler
           unit
         }
 
-      "linear-gradient(#{_scaled ({angle}) -> angle}deg, #{
+      "#{function_name}(#{_scaled ({angle}) -> angle}deg, #{
         ("#{color} #{position}#{unit}" for {color, position, unit} in adjusted_stops)
         .join ', '
       })"
     )
     .join ', '
+}
+
+register_animation_handler gradient_handler
+  hook_name: 'linearGradient'
+  function_name: 'linear-gradient'
+
+register_animation_handler gradient_handler
+  hook_name: 'repeatingLinearGradient'
+  function_name: 'repeating-linear-gradient'
