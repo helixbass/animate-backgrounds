@@ -2,8 +2,10 @@
 
 # background-position logic and general approach from Extending jQuery
 
-map = ( arr, clb ) ->
+map = (arr, clb) ->
   clb elem, i for elem, i in arr
+extended = (obj, objs...) ->
+  extend {}, obj, objs...
 
 register_animation_handler = ({
   prop_name, hook_name
@@ -227,22 +229,53 @@ register_animation_handler
 #     get: _get
 #     set: _set
 
-_int = ( str ) ->
+_int = (str) ->
   parseInt str, 10
 
-gradient_handler = ({function_name, hook_name}) -> {
+regex_chunk_str = (regex) ->
+  [all, chunk] =
+    ///
+      ^
+      /
+      ( . * )
+      /
+      [^/] *
+      $
+    ///.exec regex.toString()
+  chunk
+
+length_regex_chunk = regex_chunk_str ///
+  (?:
+    \s +
+    ( # position
+      [0-9.] +
+    )
+    ( # unit
+      %
+      |
+      \w +
+    )
+  )
+///
+
+scaled = ({start, end, pos, prop}) ->
+  if prop
+    if 'string' is type prop
+      prop = do (prop) ->
+        (val) -> val[prop]
+    start = prop start
+    end   = prop end
+  val = start + pos * (end - start)
+  val
+
+gradient_handler = ({function_name, hook_name, parse_gradient, pre_stops_css}) -> {
   hook_name
   prop_name: 'backgroundImage'
 
   init_tween_end: ({ tween, parse }) ->
     { start, end } = tween
 
-    parse end
-
-   # unit: if end.indexOf '%' > -1
-   #           '%'
-   #       else
-   #           'px'
+    parse end # TODO: error if end doesn't match start eg wrong # of background images/stops
 
   parse: ( val ) ->
     _top_level_args = ( val ) ->
@@ -265,55 +298,163 @@ gradient_handler = ({function_name, hook_name}) -> {
       ///g
 
     for image in _top_level_args val then do ->
-      match = ///
-        ^
-        \s *
-        #{function_name}\(
-        \s *
-        (?: # optional angle/direction
-          (?: # angle or directions
-            ( # angle
-              - ?
-              \d +
-            )
-            deg
-            |
-            to
-            \s +
-            ( # first direction
-              bottom | top | left | right
-            )
-            (?: # second direction
-              \s +
-              ( bottom | top | left | right )
-            )?
-          )
-          \s *
-          ,
-          \s *
-        ) ?
-        ( # stops
-          . +
-          # (?:
-          #   [^()] +
-          #   |
-          #   \( [^)] + \)
-          # ) +
-          # (?:
-          #   rgb\(
-          #   [^\)] *
-          #   \)
-          #   |
-          #   [^\)] +
-          # ) *
-        )
-        \)
-        \s *
-        $
-      ///.exec image
-      return image unless match
-      [all, angle, first_direction, second_direction, stops] = match
+      parsed = parse_gradient {image, function_name}
+      return parsed unless parsed?.stops_str
+      {stops_str, obj} = parsed
+      extended obj,
+        stops: do ->
+          split_stops = _top_level_args stops_str
+          stops =
+            for stop, stop_index in split_stops
+              match = ///
+                ^
+                \s *
+                ( # color
+                  (?: # rgb(a)
+                    rgba?\(
+                    [^)] *
+                    \)
+                  )
+                  |
+                  (?: # rgb(a)
+                    hsla?\(
+                    [^)] *
+                    \)
+                  )
+                  |
+                  (?: # hex
+                    \#
+                    [0-9A-Fa-f] +
+                  )
+                  |
+                  \w + # color name / transparent
+                )
+                #{length_regex_chunk} ?
+              ///.exec stop
+              # TODO: error if no match
+              [all, color, position, unit] = match
+              unless position?
+                position =
+                  switch stop_index
+                    when 0
+                      0
+                    when split_stops.length - 1
+                      100
+                unit = '%'
 
+              color:
+                Color color
+              position:
+                _int position if position?
+              unit:
+                unit ? 'px'
+
+          fill_in_missing = ({missing, prev_stop_position, following_stop_position}) ->
+            # TODO: should check that units match? otherwise error ie presumably can't space between px and %?
+            per = (following_stop_position - prev_stop_position) / (missing.length + 1)
+            current_position = prev_stop_position
+            for missing_stop in missing
+              current_position += per
+              missing_stop.position = current_position
+
+          assign_missing_stop_positions = ({stop_index, prev_stop_position}) ->
+            missing = [stop]
+            for following_stop, following_stop_index in stops[stop_index + 1..]
+              {position} = following_stop
+              if position?
+                fill_in_missing {missing, prev_stop_position, following_stop_position: position}
+                return stop_index + following_stop_index + 1
+              else
+                missing.push following_stop
+
+          fill_consecutive_missing_stop_positions = ->
+            prev_stop_position = null
+            for stop, stop_index in stops
+              {position} = stop
+              return assign_missing_stop_positions {stop, stop_index, prev_stop_position} unless position?
+
+              prev_stop_position = position
+            null
+          null while do fill_consecutive_missing_stop_positions
+          stops
+
+  css_val_from_initialized_tween: ( tween ) ->
+    { pos, start, end } = tween
+
+    (for image, image_index in start then do ->
+      return image if 'string' is type image
+      end_image = end[image_index]
+
+      _scaled = (prop) ->
+        scaled {
+          start: image
+          end: end_image
+          pos, prop
+        }
+
+      adjusted_stops =
+        for {color, unit}, i in image.stops then {
+          color:
+            color.transition end[image_index].stops[i].color, pos
+          position:
+            _scaled ({stops}) -> stops[i].position
+          unit
+        }
+
+      "#{function_name}(#{
+        pre_stops_css {
+          start_gradient: image
+          end_gradient: end_image
+          pos
+        }
+      }#{
+        ("#{color} #{position}#{unit}" for {color, position, unit} in adjusted_stops)
+        .join ', '
+      })"
+    )
+    .join ', '
+}
+
+parse_linear_gradient = ({image, function_name}) ->
+  match = ///
+    ^
+    \s *
+    #{function_name}\(
+    \s *
+    (?: # optional angle/direction
+      (?: # angle or directions
+        ( # angle
+          - ?
+          \d +
+        )
+        deg
+        |
+        to
+        \s +
+        ( # first direction
+          bottom | top | left | right
+        )
+        (?: # second direction
+          \s +
+          ( bottom | top | left | right )
+        )?
+      )
+      \s *
+      ,
+      \s *
+    ) ?
+    ( # stops
+      . +
+    )
+    \)
+    \s *
+    $
+  ///.exec image
+  return image unless match
+  [all, angle, first_direction, second_direction, stops_str] = match
+
+  {
+    obj:
       angle: do ->
         return _int angle if angle
         if second_direction
@@ -336,94 +477,65 @@ gradient_handler = ({function_name, hook_name}) -> {
             when 'left'   then 270
             when 'right'  then 90
             else # TODO: error
-      stops: do ->
-        split_stops = _top_level_args stops
-        for stop, stop_index in split_stops
-          match = ///
-            ^
-            \s *
-            ( # color
-              (?: # rgb
-                rgb\(
-                [^)] *
-                \)
-              )
-              |
-              (?: # hex
-                \#
-                [0-9A-Fa-f] +
-              )
-              |
-              \w + # color name / transparent
-            )
-            (?:
-              \s +
-              ( # position
-                [0-9.] +
-              )
-              ( # unit
-                %
-                |
-                \w +
-              )
-            ) ?
-          ///.exec stop
-          # TODO: error if no match
-          [all, color, position, unit] = match
-          unless position?
-            position =
-              switch stop_index
-                when 0
-                  0
-                when split_stops.length - 1
-                  100
-                else
-                  # TODO: error
-            unit = '%'
+    stops_str
+  }
 
-          color:
-            Color color
-          position:
-            _int(position ? 0)
-          unit:
-            unit ? 'px'
-
-  css_val_from_initialized_tween: ( tween ) ->
-    { pos, start, end } = tween
-
-    (for image, image_index in start then do ->
-      return image if 'string' is type image
-      end_image = end[image_index]
-
-      _scaled = (_prop) ->
-        # _prop = if 'string' is type prop
-        #             ( val ) -> val[ prop ]
-        #         else
-        #             prop
-        start_val = _prop image
-        start_val + pos * (_prop(end_image) - start_val)
-
-      adjusted_stops =
-        for {color, unit}, i in image.stops then {
-          color:
-            color.transition end[image_index].stops[i].color, pos
-          position:
-            _scaled ({stops}) -> stops[i].position
-          unit
-        }
-
-      "#{function_name}(#{_scaled ({angle}) -> angle}deg, #{
-        ("#{color} #{position}#{unit}" for {color, position, unit} in adjusted_stops)
-        .join ', '
-      })"
-    )
-    .join ', '
-}
+pre_stops_css_linear_gradient = ({start_gradient, end_gradient, pos}) ->
+  "#{
+    scaled {
+      start: start_gradient
+      end: end_gradient
+      pos
+      prop: 'angle'
+    }
+  }deg, "
 
 register_animation_handler gradient_handler
   hook_name: 'linearGradient'
   function_name: 'linear-gradient'
+  parse_gradient: parse_linear_gradient
+  pre_stops_css: pre_stops_css_linear_gradient
 
 register_animation_handler gradient_handler
   hook_name: 'repeatingLinearGradient'
   function_name: 'repeating-linear-gradient'
+  parse_gradient: parse_linear_gradient
+  pre_stops_css: pre_stops_css_linear_gradient
+
+parse_radial_gradient = ({image, function_name}) ->
+  match = ///
+    ^
+    \s *
+    #{function_name}\(
+    \s *
+    (?: # optional shape/extent/position
+      (circle | ellipse)
+      \s *
+      ,
+      \s *
+    ) ?
+    ( # stops
+      . +
+    )
+    \)
+    \s *
+    $
+  ///.exec image
+  return image unless match
+  [all, shape, stops_str] = match
+
+  {
+    obj: {shape}
+    stops_str
+  }
+
+pre_stops_css_radial_gradient = ({start_gradient, end_gradient, pos}) ->
+  {shape} = start_gradient
+
+  "#{shape}, "
+
+register_animation_handler gradient_handler
+  hook_name: 'radialGradient'
+  function_name: 'radial-gradient'
+  parse_gradient: parse_radial_gradient
+  pre_stops_css: pre_stops_css_radial_gradient
