@@ -730,26 +730,29 @@
   }));
 
   parse_radial_gradient = function(arg) {
-    var all, function_name, image, match, shape, stops_str;
+    var all, extent1, extent2, extent_regex_chunk, function_name, image, match, ref, shape1, shape2, shape_regex_chunk, stops_str;
     image = arg.image, function_name = arg.function_name;
-    match = RegExp("^\\s*" + function_name + "\\(\\s*(?:(circle|ellipse)\\s*,\\s*)?(.+)\\)\\s*$").exec(image);
+    shape_regex_chunk = regex_chunk_str(/(circle|ellipse)/);
+    extent_regex_chunk = regex_chunk_str(/(closest-corner|closest-side|farthest-corner|farthest-side)/);
+    match = RegExp("^\\s*" + function_name + "\\(\\s*(?:(?:" + shape_regex_chunk + "\\s+" + extent_regex_chunk + "?|" + extent_regex_chunk + "\\s+" + shape_regex_chunk + "?)\\s*,\\s*)?(.+)\\)\\s*$").exec(image);
     if (!match) {
       return image;
     }
-    all = match[0], shape = match[1], stops_str = match[2];
+    all = match[0], shape1 = match[1], extent1 = match[2], extent2 = match[3], shape2 = match[4], stops_str = match[5];
     return {
       obj: {
-        shape: shape
+        shape: (ref = shape1 != null ? shape1 : shape2) != null ? ref : 'ellipse',
+        extent: extent1 != null ? extent1 : extent2
       },
       stops_str: stops_str
     };
   };
 
   pre_stops_css_radial_gradient = function(arg) {
-    var end_change, end_gradient, pos, shape, start_gradient;
+    var end_change, end_gradient, extent, pos, shape, start_gradient;
     start_gradient = arg.start_gradient, end_gradient = arg.end_gradient, end_change = arg.end_change, pos = arg.pos;
-    shape = start_gradient.shape;
-    return shape + ", ";
+    shape = start_gradient.shape, extent = start_gradient.extent;
+    return "" + shape + (extent ? " " + extent : '') + ", ";
   };
 
   register_animation_handler(gradient_handler({

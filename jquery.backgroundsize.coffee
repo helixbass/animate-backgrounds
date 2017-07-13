@@ -687,13 +687,28 @@ register_animation_handler gradient_handler
   pre_stops_css: pre_stops_css_linear_gradient
 
 parse_radial_gradient = ({image, function_name}) ->
+  shape_regex_chunk = regex_chunk_str ///
+    (circle | ellipse)
+  ///
+  extent_regex_chunk = regex_chunk_str ///
+    (closest-corner | closest-side | farthest-corner | farthest-side)
+  ///
+
   match = ///
     ^
     \s *
     #{function_name}\(
     \s *
     (?: # optional shape/extent/position
-      (circle | ellipse)
+      (?:
+        #{shape_regex_chunk}
+        \s +
+        #{extent_regex_chunk} ?
+        |
+        #{extent_regex_chunk}
+        \s +
+        #{shape_regex_chunk} ?
+      )
       \s *
       ,
       \s *
@@ -706,17 +721,25 @@ parse_radial_gradient = ({image, function_name}) ->
     $
   ///.exec image
   return image unless match
-  [all, shape, stops_str] = match
+  [all, shape1, extent1, extent2, shape2, stops_str] = match
 
   {
-    obj: {shape}
+    obj:
+      shape:
+        shape1 ? shape2 ? 'ellipse'
+      extent:
+        extent1 ? extent2
     stops_str
   }
 
 pre_stops_css_radial_gradient = ({start_gradient, end_gradient, end_change, pos}) ->
-  {shape} = start_gradient
+  {shape, extent} = start_gradient
 
-  "#{shape}, "
+  "#{shape}#{
+    if extent
+      " #{extent}"
+    else ''
+  }, "
 
 register_animation_handler gradient_handler
   hook_name: 'radialGradient'
