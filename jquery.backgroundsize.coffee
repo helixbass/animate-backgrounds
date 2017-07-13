@@ -299,6 +299,63 @@ color_eq = (a, b) ->
   return no for component, component_index in a._rgba when b._rgba[component_index] isnt component
   yes
 
+angle_or_direction_regex_chunk = regex_chunk_str ///
+  (?: # angle or directions
+    ( # angle
+      - ?
+      \d +
+      (?:
+        .
+        \d +
+      ) ?
+    )
+    deg
+    |
+    to
+    \s +
+    ( # first direction
+      bottom | top | left | right
+    )
+    (?: # second direction
+      \s +
+      ( bottom | top | left | right )
+    )?
+  )
+///
+
+value_regex_chunk = regex_chunk_str ///
+  (?:
+    #{angle_or_direction_regex_chunk}
+    |
+    #{length_regex_chunk}
+    |
+    #{color_regex_chunk}
+  )
+///
+
+angle_from_direction = ({angle, first_direction, second_direction}) ->
+  return _int angle if angle
+  if second_direction
+    # TODO: error if first_direction same as second_direction or eg top bottom
+    if 'top' in [first_direction, second_direction]
+      if 'left' in [first_direction, second_direction]
+        315
+      else
+        45
+    else
+      if 'left' in [first_direction, second_direction]
+        225
+      else
+        135
+  else do ->
+    first_direction = 'bottom' unless first_direction
+    switch first_direction
+      when 'top'    then 0
+      when 'bottom' then 180
+      when 'left'   then 270
+      when 'right'  then 90
+      else # TODO: error
+
 gradient_handler = ({function_name, hook_name, parse_gradient, pre_stops_css}) -> {
   hook_name
   prop_name: 'backgroundImage'
@@ -309,40 +366,47 @@ gradient_handler = ({function_name, hook_name, parse_gradient, pre_stops_css}) -
     looks_like_shorthand = (end) ->
       return yes if ///
         \s *
-        (?:
-          #{length_regex_chunk}
-          |
-          #{color_regex_chunk}
-        )
+        #{value_regex_chunk}
         \s *
         ->
       ///.exec end
     return parse end unless looks_like_shorthand end # TODO: error if end doesn't match start eg wrong # of background images/stops
 
     changing_vals = do ->
-      parsed_pairs = []
+      parsed_pairs         = []
+      indexed_parsed_pairs = {}
       separator = null
+      index     = null
       remaining = end
       while remaining
         # TODO: error if parsed_pairs.length and not separator
-        match =
-          ///
-            ^
-            \s *
-            (?:
-              #{length_regex_chunk}
-              |
-              #{color_regex_chunk}
-            )
-            \s *
-            ->
-            \s *
-          ///.exec remaining
-        [all, position, unit, color] = match
+        # TODO: move regexes to top level for optimization
+        if match = ///
+          ^
+          \s *
+          \[
+          (\d +)
+          \]
+        ///.exec remaining
+          [all, index] = match
+          remaining = remaining[all.length..]
+
+        match = ///
+          ^
+          \s *
+          #{value_regex_chunk}
+          \s *
+          ->
+          \s *
+        ///.exec remaining
+        [all, angle, first_direction, second_direction, position, unit, color] = match
         pair =
           if color?
             type: 'color'
             start: {color}
+          else if angle or first_direction
+            type: 'angle'
+            start: angle: angle_from_direction {angle, first_direction, second_direction}
           else
             type: 'length'
             start: {unit, position: _int position}
@@ -350,48 +414,57 @@ gradient_handler = ({function_name, hook_name, parse_gradient, pre_stops_css}) -
         match =
           ///
             ^
-            (?:
-              #{length_regex_chunk}
-              |
-              #{color_regex_chunk}
-            )
+            #{value_regex_chunk}
             [^,\n\S] *
             ([,\n])
             \s *
           ///.exec remaining
-        [all, position, unit, color, separator] = match
+        [all, angle, first_direction, second_direction, position, unit, color, separator] = match
         pair.end = # TODO: check that same type as start?
           if color?
             {color}
+          else if angle or first_direction
+            angle: angle_from_direction {angle, first_direction, second_direction}
           else
             {unit, position: _int position}
-        parsed_pairs.push pair
+        (if index?
+          indexed_parsed_pairs[index] ?= []
+        else
+          parsed_pairs
+        ).push pair
         remaining = remaining[all.length..]
 
-      parsed_pairs
+      extended indexed_parsed_pairs,
+        all: parsed_pairs
 
     _change: do ->
       _change = []
       for image, image_index in start
+        changing_vals_for_image =
+          changing_vals.all[..]
+          .concat(changing_vals[image_index] ? [])
         continue if is_string image
         {stops, angle} = image
         changed = null
+        for {start: start_change, end: end_change, type} in changing_vals_for_image when type is 'angle'
+          if angle is start_change.angle
+            (changed ?= {}).angle = end_change.angle
         for stop, stop_index in stops
           changed_stop = null
-          for {start, end, type} in changing_vals
+          for {start: start_change, end: end_change, type} in changing_vals_for_image
             switch type
               when 'length'
-                {position, unit} = start
+                {position, unit} = start_change
                 continue unless position is stop.position and unit is stop.unit
                 extend (changed_stop ?= {}),
-                  position: end.position
-                  unit:     end.unit
+                  position: end_change.position
+                  unit:     end_change.unit
               when 'color'
-                {color} = start
+                {color} = start_change
                 continue unless color_eq color, stop.color
                 extend (changed_stop ?= {}),
-                  color: end.color
-          ((changed ?= {}).stops ?= [])[stop_index] = changed_stop
+                  color: end_change.color
+          ((changed ?= {}).stops ?= [])[stop_index] = changed_stop if changed_stop
         _change[image_index] = changed if changed
       _change # TODO: warn/error if no detected changes?
 
@@ -484,12 +557,15 @@ gradient_handler = ({function_name, hook_name, parse_gradient, pre_stops_css}) -
     {pos, start, end} = tween
     {_change} = end
     current = null
+    get_current = ->
+      current ?= parsed_tween tween
 
     (for image, image_index in start then do ->
       return image if is_string image
-      return image if _change and not end_change=_change[image_index]
 
-      current_image = (current ?= parsed_tween tween)[image_index] if end_change
+      if _change
+        end_change = _change[image_index]
+        current_image = get_current()[image_index]
       end_image = end[image_index]
 
       _scaled = (prop) ->
@@ -503,9 +579,9 @@ gradient_handler = ({function_name, hook_name, parse_gradient, pre_stops_css}) -
         for stop, stop_index in image.stops
           {color, unit, position} = stop
 
-          if end_change
+          if _change
             current_stop = current_image.stops[stop_index]
-            if stop_change=end_change.stops?[stop_index]
+            if stop_change=end_change?.stops?[stop_index]
               {
                 color:
                   if color_change=stop_change.color
@@ -537,8 +613,10 @@ gradient_handler = ({function_name, hook_name, parse_gradient, pre_stops_css}) -
         pre_stops_css {
           start_gradient: image
           end_gradient: end_image
-          end_change
+          end_change, _change
           pos
+          get_current_image: ->
+            (current ?= parsed_tween tween)[image_index]
         }
       }#{
         ("#{color} #{position}#{unit}" for {color, position, unit} in adjusted_stops)
@@ -555,23 +633,7 @@ parse_linear_gradient = ({image, function_name}) ->
     #{function_name}\(
     \s *
     (?: # optional angle/direction
-      (?: # angle or directions
-        ( # angle
-          - ?
-          \d +
-        )
-        deg
-        |
-        to
-        \s +
-        ( # first direction
-          bottom | top | left | right
-        )
-        (?: # second direction
-          \s +
-          ( bottom | top | left | right )
-        )?
-      )
+      #{angle_or_direction_regex_chunk}
       \s *
       ,
       \s *
@@ -587,36 +649,22 @@ parse_linear_gradient = ({image, function_name}) ->
   [all, angle, first_direction, second_direction, stops_str] = match
 
   {
-    obj:
-      angle: do ->
-        return _int angle if angle
-        if second_direction
-          # TODO: error if first_direction same as second_direction or eg top bottom
-          if 'top' in [first_direction, second_direction]
-            if 'left' in [first_direction, second_direction]
-              315
-            else
-              45
-          else
-            if 'left' in [first_direction, second_direction]
-              225
-            else
-              135
-        else do ->
-          first_direction = 'bottom' unless first_direction
-          switch first_direction
-            when 'top'    then 0
-            when 'bottom' then 180
-            when 'left'   then 270
-            when 'right'  then 90
-            else # TODO: error
+    obj: angle: angle_from_direction {angle, first_direction, second_direction}
     stops_str
   }
 
-pre_stops_css_linear_gradient = ({start_gradient, end_gradient, end_change, pos}) ->
+pre_stops_css_linear_gradient = ({start_gradient, end_gradient, end_change, _change, pos, get_current_image}) ->
   "#{
-    if end_change
-      start_gradient.angle
+    if _change
+      if angle_change=end_change?.angle
+        scaled {
+          start: start_gradient.angle
+          end: angle_change
+          pos
+        }
+      else
+        get_current_image()
+        .angle
     else
       scaled {
         start: start_gradient
