@@ -291,14 +291,19 @@
     if (!(b instanceof Color)) {
       b = Color(b);
     }
-    ref = a._rgba;
+    ref = a._rgba.slice(0, 3);
     for (component_index = j = 0, len = ref.length; j < len; component_index = ++j) {
       component = ref[component_index];
       if (b._rgba[component_index] !== component) {
         return false;
       }
     }
-    return true;
+    if (a._rgba[3] === b._rgba[3]) {
+      return true;
+    }
+    return {
+      opacity: b._rgba[3]
+    };
   };
 
   angle_or_direction_regex_chunk = regex_chunk_str(/(?:(-?\d+(?:.\d+)?)deg|to\s+(bottom|top|left|right)(?:\s+(bottom|top|left|right))?)/);
@@ -421,7 +426,7 @@
         })();
         return {
           _change: (function() {
-            var _change, angle, base, changed, changed_stop, changing_vals_for_image, color, end_change, image, image_index, j, k, l, len, len1, len2, len3, m, position, ref, ref1, ref2, start_change, stop, stop_index, stops, type, unit;
+            var _change, _eq, angle, base, changed, changed_stop, changing_vals_for_image, color, color_change, end_change, image, image_index, j, k, l, len, len1, len2, len3, m, position, ref, ref1, ref2, start_change, stop, stop_index, stops, type, unit, use_opacity;
             _change = [];
             for (image_index = j = 0, len = start.length; j < len; image_index = ++j) {
               image = start[image_index];
@@ -457,11 +462,15 @@
                       break;
                     case 'color':
                       color = start_change.color;
-                      if (!color_eq(color, stop.color)) {
+                      if (!(_eq = color_eq(color, stop.color))) {
                         continue;
                       }
+                      color_change = Color(end_change.color);
+                      if (use_opacity = _eq != null ? _eq.opacity : void 0) {
+                        color_change = color_change.alpha(use_opacity);
+                      }
                       extend((changed_stop != null ? changed_stop : changed_stop = {}), {
-                        color: Color(end_change.color)
+                        color: color_change
                       });
                   }
                 }

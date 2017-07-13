@@ -301,8 +301,9 @@ scaled = ({start, end, pos, prop}) ->
 color_eq = (a, b) ->
   a = Color a unless a instanceof Color
   b = Color b unless b instanceof Color
-  return no for component, component_index in a._rgba when b._rgba[component_index] isnt component
-  yes
+  return no for component, component_index in a._rgba[0..2] when b._rgba[component_index] isnt component
+  return yes if a._rgba[3] is b._rgba[3]
+  opacity: b._rgba[3]
 
 angle_or_direction_regex_chunk = regex_chunk_str ///
   (?: # angle or directions
@@ -466,12 +467,15 @@ gradient_handler = ({function_name, hook_name, parse_gradient, detect_gradient_t
                   unit:     end_change.unit
               when 'color'
                 {color} = start_change
-                continue unless color_eq color, stop.color
+                continue unless _eq=color_eq color, stop.color
+                color_change = Color end_change.color
+                if use_opacity=_eq?.opacity
+                  color_change = color_change.alpha use_opacity
                 extend (changed_stop ?= {}),
-                  color: Color end_change.color
+                  color: color_change
           ((changed ?= {}).stops ?= [])[stop_index] = changed_stop if changed_stop
         _change[image_index] = changed if changed
-      _change # TODO: warn/error if no detected changes?
+      _change # TODO: warn/error if no detected changes? warn for each changing_val that wasn't found anywhere?
 
   parse: (val) ->
     _top_level_args = (val) ->
