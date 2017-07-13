@@ -1,4 +1,7 @@
-{ extend, Tween, type, Color } = $
+{ extend, Tween, Color } = $
+
+is_string = (obj) ->
+  'string' is $.type obj
 
 # background-position logic and general approach from Extending jQuery
 
@@ -13,8 +16,8 @@ register_animation_handler = ({
   init_tween_end
   css_val_from_initialized_tween
 }) ->
-  parsed_tween = ( tween ) ->
-    parse $( tween.elem ).css prop_name
+  parsed_tween = (tween) ->
+    parse $(tween.elem).css prop_name
 
   init = ( tween ) ->
     tween.start = parsed_tween tween
@@ -27,16 +30,16 @@ register_animation_handler = ({
 
   Tween.propHooks[hook_name ? prop_name] =
     get: parsed_tween
-    set: ( tween ) ->
+    set: (tween) ->
       init tween unless tween.set
 
       $ tween.elem
       .css prop_name,
-        css_val_from_initialized_tween tween
+        css_val_from_initialized_tween {tween, parsed_tween}
 
 register_animation_handler
   prop_name: 'backgroundPosition'
-  parse: ( val ) ->
+  parse: (val) ->
     for bg in (val || '').split /\s*,\s*/
       dims = do ->
         unstandardizedDims = bg.split /\s+/
@@ -94,7 +97,7 @@ register_animation_handler
         amount: parseFloat _match[2]
         unit: _match[3] or 'px'
 
-  init_tween_end: ({ tween, parse }) ->
+  init_tween_end: ({tween, parse}) ->
     { start, end } = tween
 
     for endBg, bgIndex in parse end
@@ -108,7 +111,7 @@ register_animation_handler
 
         val
 
-  css_val_from_initialized_tween: ( tween ) ->
+  css_val_from_initialized_tween: ({tween}) ->
     {
       pos
       start
@@ -130,7 +133,7 @@ register_animation_handler
 
 register_animation_handler
   prop_name: 'backgroundSize'
-  parse: ( val ) ->
+  parse: (val) ->
     for bg in (val || '').split /\s*,\s*/
       dims = do ->
         return [bg, ''] if bg in ['contain', 'cover']
@@ -179,7 +182,7 @@ register_animation_handler
           amount: parseFloat _match[2]
           unit: _match[3] or 'px'
 
-  init_tween_end: ({ tween, parse }) ->
+  init_tween_end: ({tween, parse}) ->
     { start, end } = tween
 
     for endBg, bgIndex in parse end
@@ -194,7 +197,7 @@ register_animation_handler
 
         val
 
-  css_val_from_initialized_tween: ( tween ) ->
+  css_val_from_initialized_tween: ({tween}) ->
     {
       pos
       start
@@ -246,7 +249,6 @@ regex_chunk_str = (regex) ->
 
 length_regex_chunk = regex_chunk_str ///
   (?:
-    \s +
     ( # position
       [0-9.] +
     )
@@ -258,9 +260,32 @@ length_regex_chunk = regex_chunk_str ///
   )
 ///
 
+color_regex_chunk = regex_chunk_str ///
+  ( # color
+    (?: # rgb(a)
+      rgba?\(
+      [^)] *
+      \)
+    )
+    |
+    (?: # rgb(a)
+      hsla?\(
+      [^)] *
+      \)
+    )
+    |
+    (?: # hex
+      \#
+      [0-9A-Fa-f] +
+    )
+    |
+    \w + # color name / transparent
+  )
+///
+
 scaled = ({start, end, pos, prop}) ->
   if prop
-    if 'string' is type prop
+    if is_string prop
       prop = do (prop) ->
         (val) -> val[prop]
     start = prop start
@@ -268,14 +293,107 @@ scaled = ({start, end, pos, prop}) ->
   val = start + pos * (end - start)
   val
 
+color_eq = (a, b) ->
+  a = Color a unless a instanceof Color
+  b = Color b unless b instanceof Color
+  return no for component, component_index in a._rgba when b._rgba[component_index] isnt component
+  yes
+
 gradient_handler = ({function_name, hook_name, parse_gradient, pre_stops_css}) -> {
   hook_name
   prop_name: 'backgroundImage'
 
-  init_tween_end: ({ tween, parse }) ->
-    { start, end } = tween
+  init_tween_end: ({tween, parse}) ->
+    {start, end} = tween
 
-    parse end # TODO: error if end doesn't match start eg wrong # of background images/stops
+    looks_like_shorthand = (end) ->
+      return yes if ///
+        \s *
+        (?:
+          #{length_regex_chunk}
+          |
+          #{color_regex_chunk}
+        )
+        \s *
+        ->
+      ///.exec end
+    return parse end unless looks_like_shorthand end # TODO: error if end doesn't match start eg wrong # of background images/stops
+
+    changing_vals = do ->
+      parsed_pairs = []
+      separator = null
+      remaining = end
+      while remaining
+        # TODO: error if parsed_pairs.length and not separator
+        match =
+          ///
+            ^
+            \s *
+            (?:
+              #{length_regex_chunk}
+              |
+              #{color_regex_chunk}
+            )
+            \s *
+            ->
+            \s *
+          ///.exec remaining
+        [all, position, unit, color] = match
+        pair =
+          if color?
+            type: 'color'
+            start: {color}
+          else
+            type: 'length'
+            start: {unit, position: _int position}
+        remaining = remaining[all.length..]
+        match =
+          ///
+            ^
+            (?:
+              #{length_regex_chunk}
+              |
+              #{color_regex_chunk}
+            )
+            [^,\n\S] *
+            ([,\n])
+            \s *
+          ///.exec remaining
+        [all, position, unit, color, separator] = match
+        pair.end = # TODO: check that same type as start?
+          if color?
+            {color}
+          else
+            {unit, position: _int position}
+        parsed_pairs.push pair
+        remaining = remaining[all.length..]
+
+      parsed_pairs
+
+    _change: do ->
+      _change = []
+      for image, image_index in start
+        continue if is_string image
+        {stops, angle} = image
+        changed = null
+        for stop, stop_index in stops
+          changed_stop = null
+          for {start, end, type} in changing_vals
+            switch type
+              when 'length'
+                {position, unit} = start
+                continue unless position is stop.position and unit is stop.unit
+                extend (changed_stop ?= {}),
+                  position: end.position
+                  unit:     end.unit
+              when 'color'
+                {color} = start
+                continue unless color_eq color, stop.color
+                extend (changed_stop ?= {}),
+                  color: end.color
+          ((changed ?= {}).stops ?= [])[stop_index] = changed_stop
+        _change[image_index] = changed if changed
+      _change # TODO: warn/error if no detected changes?
 
   parse: ( val ) ->
     _top_level_args = ( val ) ->
@@ -309,27 +427,11 @@ gradient_handler = ({function_name, hook_name, parse_gradient, pre_stops_css}) -
               match = ///
                 ^
                 \s *
-                ( # color
-                  (?: # rgb(a)
-                    rgba?\(
-                    [^)] *
-                    \)
-                  )
-                  |
-                  (?: # rgb(a)
-                    hsla?\(
-                    [^)] *
-                    \)
-                  )
-                  |
-                  (?: # hex
-                    \#
-                    [0-9A-Fa-f] +
-                  )
-                  |
-                  \w + # color name / transparent
-                )
-                #{length_regex_chunk} ?
+                #{color_regex_chunk}
+                (?:
+                  \s +
+                  #{length_regex_chunk}
+                ) ?
               ///.exec stop
               # TODO: error if no match
               [all, color, position, unit] = match
@@ -378,11 +480,16 @@ gradient_handler = ({function_name, hook_name, parse_gradient, pre_stops_css}) -
           null while do fill_consecutive_missing_stop_positions
           stops
 
-  css_val_from_initialized_tween: ( tween ) ->
-    { pos, start, end } = tween
+  css_val_from_initialized_tween: ({tween, parsed_tween}) ->
+    {pos, start, end} = tween
+    {_change} = end
+    current = null
 
     (for image, image_index in start then do ->
-      return image if 'string' is type image
+      return image if is_string image
+      return image if _change and not end_change=_change[image_index]
+
+      current_image = (current ?= parsed_tween tween)[image_index] if end_change
       end_image = end[image_index]
 
       _scaled = (prop) ->
@@ -393,18 +500,44 @@ gradient_handler = ({function_name, hook_name, parse_gradient, pre_stops_css}) -
         }
 
       adjusted_stops =
-        for {color, unit}, i in image.stops then {
-          color:
-            color.transition end[image_index].stops[i].color, pos
-          position:
-            _scaled ({stops}) -> stops[i].position
-          unit
-        }
+        for stop, stop_index in image.stops
+          {color, unit, position} = stop
+
+          if end_change
+            current_stop = current_image.stops[stop_index]
+            if stop_change=end_change.stops?[stop_index]
+              {
+                color:
+                  if color_change=stop_change.color
+                    color.transition color_change, pos
+                  else
+                    current_stop.color
+                position:
+                  if position_change=stop_change.position
+                    scaled {
+                      start: position
+                      end: position_change
+                      pos
+                    }
+                  else
+                    current_stop.position
+                unit
+              }
+            else
+              current_stop
+          else {
+            color:
+              color.transition end_image.stops[stop_index].color, pos
+            position:
+              _scaled ({stops}) -> stops[stop_index].position
+            unit
+          }
 
       "#{function_name}(#{
         pre_stops_css {
           start_gradient: image
           end_gradient: end_image
+          end_change
           pos
         }
       }#{
@@ -480,14 +613,17 @@ parse_linear_gradient = ({image, function_name}) ->
     stops_str
   }
 
-pre_stops_css_linear_gradient = ({start_gradient, end_gradient, pos}) ->
+pre_stops_css_linear_gradient = ({start_gradient, end_gradient, end_change, pos}) ->
   "#{
-    scaled {
-      start: start_gradient
-      end: end_gradient
-      pos
-      prop: 'angle'
-    }
+    if end_change
+      start_gradient.angle
+    else
+      scaled {
+        start: start_gradient
+        end: end_gradient
+        pos
+        prop: 'angle'
+      }
   }deg, "
 
 register_animation_handler gradient_handler
@@ -529,7 +665,7 @@ parse_radial_gradient = ({image, function_name}) ->
     stops_str
   }
 
-pre_stops_css_radial_gradient = ({start_gradient, end_gradient, pos}) ->
+pre_stops_css_radial_gradient = ({start_gradient, end_gradient, end_change, pos}) ->
   {shape} = start_gradient
 
   "#{shape}, "
