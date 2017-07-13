@@ -65,12 +65,12 @@
       for (j = 0, len = ref.length; j < len; j++) {
         bg = ref[j];
         dims = (function() {
-          var ref1, unstandardizedDims;
-          unstandardizedDims = bg.split(/\s+/);
-          if (unstandardizedDims.length === 1) {
-            unstandardizedDims = (ref1 = unstandardizedDims[0]) === 'top' || ref1 === 'bottom' ? ['50%', unstandardizedDims[0]] : [unstandardizedDims[0], '50%'];
+          var ref1, unstandardized_dims;
+          unstandardized_dims = bg.split(/\s+/);
+          if (unstandardized_dims.length === 1) {
+            unstandardized_dims = (ref1 = unstandardized_dims[0]) === 'top' || ref1 === 'bottom' ? ['50%', unstandardized_dims[0]] : [unstandardized_dims[0], '50%'];
           }
-          return map(unstandardizedDims, function(dim) {
+          return map(unstandardized_dims, function(dim) {
             var presets;
             presets = {
               center: '50%',
@@ -160,15 +160,15 @@
       for (j = 0, len = ref.length; j < len; j++) {
         bg = ref[j];
         dims = (function() {
-          var suppliedDims;
+          var supplied_dims;
           if (bg === 'contain' || bg === 'cover') {
             return [bg, ''];
           }
-          suppliedDims = bg.split(/\s+/);
-          if (suppliedDims.length !== 1) {
-            return suppliedDims;
+          supplied_dims = bg.split(/\s+/);
+          if (supplied_dims.length !== 1) {
+            return supplied_dims;
           }
-          return [suppliedDims[0], 'auto'];
+          return [supplied_dims[0], 'auto'];
         })();
         results.push((function() {
           var k, len1, results1;
@@ -215,20 +215,20 @@
       return results;
     },
     css_val_from_initialized_tween: function(arg) {
-      var _adjusted, _span, bgEnd, bgIndex, bgStart, bgStartDim, dim, end, pos, start, tween;
+      var _adjusted, _span, bg_end, bg_index, bg_start, bg_start_dim, dim, end, pos, start, tween;
       tween = arg.tween;
       pos = tween.pos, start = tween.start, end = tween.end;
       return ((function() {
         var j, len, results;
         results = [];
-        for (bgIndex = j = 0, len = start.length; j < len; bgIndex = ++j) {
-          bgStart = start[bgIndex];
-          bgEnd = end[bgIndex];
+        for (bg_index = j = 0, len = start.length; j < len; bg_index = ++j) {
+          bg_start = start[bg_index];
+          bg_end = end[bg_index];
           _span = function(dim) {
-            return bgEnd[dim].amount - bgStart[dim].amount;
+            return bg_end[dim].amount - bg_start[dim].amount;
           };
           _adjusted = function(dim) {
-            return bgStart[dim].amount + pos * _span(dim);
+            return bg_start[dim].amount + pos * _span(dim);
           };
           results.push(((function() {
             var k, len1, ref, results1;
@@ -236,11 +236,11 @@
             results1 = [];
             for (k = 0, len1 = ref.length; k < len1; k++) {
               dim = ref[k];
-              bgStartDim = bgStart[dim];
-              if (bgStartDim != null ? bgStartDim.unit : void 0) {
-                results1.push("" + (_adjusted(dim)) + bgStartDim.unit);
+              bg_start_dim = bg_start[dim];
+              if (bg_start_dim != null ? bg_start_dim.unit : void 0) {
+                results1.push("" + (_adjusted(dim)) + bg_start_dim.unit);
               } else {
-                results1.push(bgStartDim);
+                results1.push(bg_start_dim);
               }
             }
             return results1;
@@ -261,7 +261,7 @@
     return chunk;
   };
 
-  length_regex_chunk = regex_chunk_str(/(?:([0-9.]+)(%|\w+))/);
+  length_regex_chunk = regex_chunk_str(/(?:([+-]?\d+(?:\.\d*)?)(%|\w+))/);
 
   color_regex_chunk = regex_chunk_str(/((?:rgba?\([^)]*\))|(?:hsla?\([^)]*\))|(?:\#[0-9A-Fa-f]+)|\w+)/);
 
@@ -345,8 +345,8 @@
   };
 
   gradient_handler = function(arg) {
-    var function_name, hook_name, parse_gradient, pre_stops_css;
-    function_name = arg.function_name, hook_name = arg.hook_name, parse_gradient = arg.parse_gradient, pre_stops_css = arg.pre_stops_css;
+    var detect_gradient_type, function_name, hook_name, parse_gradient, pre_stops_css;
+    function_name = arg.function_name, hook_name = arg.hook_name, parse_gradient = arg.parse_gradient, detect_gradient_type = arg.detect_gradient_type, pre_stops_css = arg.pre_stops_css;
     return {
       hook_name: hook_name,
       prop_name: 'backgroundImage',
@@ -461,7 +461,7 @@
                         continue;
                       }
                       extend((changed_stop != null ? changed_stop : changed_stop = {}), {
-                        color: end_change.color
+                        color: Color(end_change.color)
                       });
                   }
                 }
@@ -487,7 +487,14 @@
         for (j = 0, len = ref.length; j < len; j++) {
           image = ref[j];
           results.push((function() {
-            var obj, parsed, stops_str;
+            var detected_gradient_type, obj, parsed, stops_str;
+            if (detect_gradient_type) {
+              detected_gradient_type = detect_gradient_type(image);
+              if (!detected_gradient_type) {
+                return image;
+              }
+              function_name = detected_gradient_type.function_name, parse_gradient = detected_gradient_type.parse_gradient, pre_stops_css = detected_gradient_type.pre_stops_css;
+            }
             parsed = parse_gradient({
               image: image,
               function_name: function_name
@@ -496,6 +503,12 @@
               return parsed;
             }
             stops_str = parsed.stops_str, obj = parsed.obj;
+            if (detect_gradient_type) {
+              extend(obj, {
+                pre_stops_css: pre_stops_css,
+                function_name: function_name
+              });
+            }
             return extended(obj, {
               stops: (function() {
                 var all, assign_missing_stop_positions, color, fill_consecutive_missing_stop_positions, fill_in_missing, match, position, split_stops, stop, stop_index, stops, unit;
@@ -601,7 +614,7 @@
           for (image_index = j = 0, len = start.length; j < len; image_index = ++j) {
             image = start[image_index];
             results.push((function() {
-              var _scaled, adjusted_stops, color, color_change, current_image, current_stop, end_change, end_image, position, position_change, stop, stop_change, stop_index, unit;
+              var _scaled, adjusted_stops, color, color_change, current_image, current_stop, end_change, end_image, position, position_change, ref, ref1, stop, stop_change, stop_index, unit;
               if (is_string(image)) {
                 return image;
               }
@@ -654,7 +667,7 @@
                 }
                 return results1;
               })();
-              return function_name + "(" + (pre_stops_css({
+              return ((ref = image.function_name) != null ? ref : function_name) + "(" + (((ref1 = image.pre_stops_css) != null ? ref1 : pre_stops_css)({
                 start_gradient: image,
                 end_gradient: end_image,
                 end_change: end_change,
@@ -664,10 +677,10 @@
                   return (current != null ? current : current = parsed_tween(tween))[image_index];
                 }
               })) + (((function() {
-                var k, len1, ref, results1;
+                var k, len1, ref2, results1;
                 results1 = [];
                 for (k = 0, len1 = adjusted_stops.length; k < len1; k++) {
-                  ref = adjusted_stops[k], color = ref.color, position = ref.position, unit = ref.unit;
+                  ref2 = adjusted_stops[k], color = ref2.color, position = ref2.position, unit = ref2.unit;
                   results1.push(color + " " + position + unit);
                 }
                 return results1;
@@ -730,29 +743,79 @@
   }));
 
   parse_radial_gradient = function(arg) {
-    var all, extent1, extent2, extent_regex_chunk, function_name, image, match, ref, shape1, shape2, shape_regex_chunk, stops_str;
+    var all, extent1, extent2, extent_regex_chunk, function_name, image, keyword1, keyword2, match, position1, position2, position_regex_chunk, ref, shape1, shape2, shape_regex_chunk, single_position_regex_chunk, stops_str, unit1, unit2;
     image = arg.image, function_name = arg.function_name;
     shape_regex_chunk = regex_chunk_str(/(circle|ellipse)/);
     extent_regex_chunk = regex_chunk_str(/(closest-corner|closest-side|farthest-corner|farthest-side)/);
-    match = RegExp("^\\s*" + function_name + "\\(\\s*(?:(?:" + shape_regex_chunk + "\\s+" + extent_regex_chunk + "?|" + extent_regex_chunk + "\\s+" + shape_regex_chunk + "?)\\s*,\\s*)?(.+)\\)\\s*$").exec(image);
+    single_position_regex_chunk = regex_chunk_str(RegExp("(?:(left|center|right|top|bottom)|" + length_regex_chunk + ")"));
+    position_regex_chunk = regex_chunk_str(RegExp("at\\s+" + single_position_regex_chunk + "(?:\\s+" + single_position_regex_chunk + ")?"));
+    match = RegExp("^\\s*" + function_name + "\\(\\s*(?:(?:" + shape_regex_chunk + "(?:\\s+" + extent_regex_chunk + ")?|" + extent_regex_chunk + "(?:\\s+" + shape_regex_chunk + ")?)(?:\\s+" + position_regex_chunk + ")?\\s*,\\s*)?(.+)\\)\\s*$").exec(image);
     if (!match) {
       return image;
     }
-    all = match[0], shape1 = match[1], extent1 = match[2], extent2 = match[3], shape2 = match[4], stops_str = match[5];
+    all = match[0], shape1 = match[1], extent1 = match[2], extent2 = match[3], shape2 = match[4], keyword1 = match[5], position1 = match[6], unit1 = match[7], keyword2 = match[8], position2 = match[9], unit2 = match[10], stops_str = match[11];
     return {
       obj: {
         shape: (ref = shape1 != null ? shape1 : shape2) != null ? ref : 'ellipse',
-        extent: extent1 != null ? extent1 : extent2
+        extent: extent1 != null ? extent1 : extent2,
+        position: (function() {
+          var first, first_is_second, from_keyword, second;
+          from_keyword = function(keyword) {
+            switch (keyword) {
+              case 'center':
+                return {
+                  position: 50,
+                  unit: '%'
+                };
+              case 'top':
+                return {
+                  position: 0,
+                  unit: '%'
+                };
+              case 'bottom':
+                return {
+                  position: 100,
+                  unit: '%'
+                };
+              case 'left':
+                return {
+                  position: 0,
+                  unit: '%'
+                };
+              case 'right':
+                return {
+                  position: 100,
+                  unit: '%'
+                };
+            }
+          };
+          if (!((keyword1 != null) || (position1 != null))) {
+            return [from_keyword('center'), from_keyword('center')];
+          }
+          first = keyword1 ? (first_is_second = keyword1 === 'top' || keyword1 === 'bottom', from_keyword(keyword1)) : {
+            position: position1,
+            unit: unit1
+          };
+          second = (keyword2 != null) || (position2 != null) ? keyword2 ? from_keyword(keyword2) : {
+            position: position2,
+            unit: unit2
+          } : from_keyword('center');
+          if (first_is_second) {
+            return [second, first];
+          } else {
+            return [first, second];
+          }
+        })()
       },
       stops_str: stops_str
     };
   };
 
   pre_stops_css_radial_gradient = function(arg) {
-    var end_change, end_gradient, extent, pos, shape, start_gradient;
+    var end_change, end_gradient, extent, pos, position, shape, start_gradient;
     start_gradient = arg.start_gradient, end_gradient = arg.end_gradient, end_change = arg.end_change, pos = arg.pos;
-    shape = start_gradient.shape, extent = start_gradient.extent;
-    return "" + shape + (extent ? " " + extent : '') + ", ";
+    shape = start_gradient.shape, extent = start_gradient.extent, position = start_gradient.position;
+    return "" + shape + (extent ? " " + extent : '') + " at " + position[0].position + position[0].unit + " " + position[1].position + position[1].unit + ", ";
   };
 
   register_animation_handler(gradient_handler({
@@ -761,5 +824,184 @@
     parse_gradient: parse_radial_gradient,
     pre_stops_css: pre_stops_css_radial_gradient
   }));
+
+  register_animation_handler(gradient_handler({
+    detect_gradient_type: function(image) {
+      var all, function_name, match;
+      match = /^\s*(linear-gradient|repeating-linear-gradient|radial-gradient|repeating-radial-gradient)\(/.exec(image);
+      if (!match) {
+        return;
+      }
+      all = match[0], function_name = match[1];
+      return extended({
+        function_name: function_name
+      }, (function() {
+        switch (function_name) {
+          case 'linear-gradient':
+          case 'repeating-linear-gradient':
+            return {
+              parse_gradient: parse_linear_gradient,
+              pre_stops_css: pre_stops_css_linear_gradient
+            };
+          default:
+            return {
+              parse_gradient: parse_radial_gradient,
+              pre_stops_css: pre_stops_css_radial_gradient
+            };
+        }
+      })());
+    }
+  }));
+
+  extend(Color.names, {
+    aliceblue: '#f0f8ff',
+    antiquewhite: '#faebd7',
+    aqua: '#00ffff',
+    aquamarine: '#7fffd4',
+    azure: '#f0ffff',
+    beige: '#f5f5dc',
+    bisque: '#ffe4c4',
+    black: '#000000',
+    blanchedalmond: '#ffebcd',
+    blue: '#0000ff',
+    blueviolet: '#8a2be2',
+    brown: '#a52a2a',
+    burlywood: '#deb887',
+    cadetblue: '#5f9ea0',
+    chartreuse: '#7fff00',
+    chocolate: '#d2691e',
+    coral: '#ff7f50',
+    cornflowerblue: '#6495ed',
+    cornsilk: '#fff8dc',
+    crimson: '#dc143c',
+    cyan: '#00ffff',
+    darkblue: '#00008b',
+    darkcyan: '#008b8b',
+    darkgoldenrod: '#b8860b',
+    darkgray: '#a9a9a9',
+    darkgreen: '#006400',
+    darkgrey: '#a9a9a9',
+    darkkhaki: '#bdb76b',
+    darkmagenta: '#8b008b',
+    darkolivegreen: '#556b2f',
+    darkorange: '#ff8c00',
+    darkorchid: '#9932cc',
+    darkred: '#8b0000',
+    darksalmon: '#e9967a',
+    darkseagreen: '#8fbc8f',
+    darkslateblue: '#483d8b',
+    darkslategray: '#2f4f4f',
+    darkslategrey: '#2f4f4f',
+    darkturquoise: '#00ced1',
+    darkviolet: '#9400d3',
+    deeppink: '#ff1493',
+    deepskyblue: '#00bfff',
+    dimgray: '#696969',
+    dimgrey: '#696969',
+    dodgerblue: '#1e90ff',
+    firebrick: '#b22222',
+    floralwhite: '#fffaf0',
+    forestgreen: '#228b22',
+    fuchsia: '#ff00ff',
+    gainsboro: '#dcdcdc',
+    ghostwhite: '#f8f8ff',
+    gold: '#ffd700',
+    goldenrod: '#daa520',
+    gray: '#808080',
+    green: '#008000',
+    greenyellow: '#adff2f',
+    grey: '#808080',
+    honeydew: '#f0fff0',
+    hotpink: '#ff69b4',
+    indianred: '#cd5c5c',
+    indigo: '#4b0082',
+    ivory: '#fffff0',
+    khaki: '#f0e68c',
+    lavender: '#e6e6fa',
+    lavenderblush: '#fff0f5',
+    lawngreen: '#7cfc00',
+    lemonchiffon: '#fffacd',
+    lightblue: '#add8e6',
+    lightcoral: '#f08080',
+    lightcyan: '#e0ffff',
+    lightgoldenrodyellow: '#fafad2',
+    lightgray: '#d3d3d3',
+    lightgreen: '#90ee90',
+    lightgrey: '#d3d3d3',
+    lightpink: '#ffb6c1',
+    lightsalmon: '#ffa07a',
+    lightseagreen: '#20b2aa',
+    lightskyblue: '#87cefa',
+    lightslategray: '#778899',
+    lightslategrey: '#778899',
+    lightsteelblue: '#b0c4de',
+    lightyellow: '#ffffe0',
+    lime: '#00ff00',
+    limegreen: '#32cd32',
+    linen: '#faf0e6',
+    magenta: '#ff00ff',
+    maroon: '#800000',
+    mediumaquamarine: '#66cdaa',
+    mediumblue: '#0000cd',
+    mediumorchid: '#ba55d3',
+    mediumpurple: '#9370db',
+    mediumseagreen: '#3cb371',
+    mediumslateblue: '#7b68ee',
+    mediumspringgreen: '#00fa9a',
+    mediumturquoise: '#48d1cc',
+    mediumvioletred: '#c71585',
+    midnightblue: '#191970',
+    mintcream: '#f5fffa',
+    mistyrose: '#ffe4e1',
+    moccasin: '#ffe4b5',
+    navajowhite: '#ffdead',
+    navy: '#000080',
+    oldlace: '#fdf5e6',
+    olive: '#808000',
+    olivedrab: '#6b8e23',
+    orange: '#ffa500',
+    orangered: '#ff4500',
+    orchid: '#da70d6',
+    palegoldenrod: '#eee8aa',
+    palegreen: '#98fb98',
+    paleturquoise: '#afeeee',
+    palevioletred: '#db7093',
+    papayawhip: '#ffefd5',
+    peachpuff: '#ffdab9',
+    peru: '#cd853f',
+    pink: '#ffc0cb',
+    plum: '#dda0dd',
+    powderblue: '#b0e0e6',
+    purple: '#800080',
+    rebeccapurple: '#663399',
+    red: '#ff0000',
+    rosybrown: '#bc8f8f',
+    royalblue: '#4169e1',
+    saddlebrown: '#8b4513',
+    salmon: '#fa8072',
+    sandybrown: '#f4a460',
+    seagreen: '#2e8b57',
+    seashell: '#fff5ee',
+    sienna: '#a0522d',
+    silver: '#c0c0c0',
+    skyblue: '#87ceeb',
+    slateblue: '#6a5acd',
+    slategray: '#708090',
+    slategrey: '#708090',
+    snow: '#fffafa',
+    springgreen: '#00ff7f',
+    steelblue: '#4682b4',
+    tan: '#d2b48c',
+    teal: '#008080',
+    thistle: '#d8bfd8',
+    tomato: '#ff6347',
+    turquoise: '#40e0d0',
+    violet: '#ee82ee',
+    wheat: '#f5deb3',
+    white: '#ffffff',
+    whitesmoke: '#f5f5f5',
+    yellow: '#ffff00',
+    yellowgreen: '#9acd32'
+  });
 
 }).call(this);
