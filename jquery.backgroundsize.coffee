@@ -37,6 +37,28 @@ register_animation_handler = ({
       .css prop_name,
         css_val_from_initialized_tween {tween, parsed_tween}
 
+  anime.cssHooks[hook_name ? prop_name] = {
+    get: ({to, from, eased, el}) ->
+      console.log {to, from, eased}
+      css_val_from_initialized_tween {
+        tween:
+          start: from
+          end: to
+          pos: eased
+          elem: el
+        parsed_tween
+      }
+    parse: ({cssValue}) ->
+      parse cssValue
+    parseTo: ({to, from}) ->
+      init_tween_end {
+        tween:
+          start: from
+          end: to
+        parse
+      }
+  }
+
 register_animation_handler
   prop_name: 'backgroundPosition'
   parse: (val) ->
@@ -422,7 +444,7 @@ gradient_handler = ({function_name, hook_name, parse_gradient, detect_gradient_t
             ^
             #{value_regex_chunk}
             [^,\n\S] *
-            ([,\n])
+            ([,\n]) ?
             \s *
           ///.exec remaining
         [all, angle, first_direction, second_direction, position, unit, color, separator] = match
@@ -729,7 +751,7 @@ parse_radial_gradient = ({image, function_name}) ->
     \s *
     #{function_name}\(
     \s *
-    (?: # optional shape/extent/position
+    (?: # optional shape/extent/position TODO: handle length/percentages instead of circle/ellipse
       (?:
         #{shape_regex_chunk}
         (?:

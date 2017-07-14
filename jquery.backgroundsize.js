@@ -42,7 +42,7 @@
         tween: tween
       });
     };
-    return Tween.propHooks[hook_name != null ? hook_name : prop_name] = {
+    Tween.propHooks[hook_name != null ? hook_name : prop_name] = {
       get: parsed_tween,
       set: function(tween) {
         if (!tween.set) {
@@ -52,6 +52,42 @@
           tween: tween,
           parsed_tween: parsed_tween
         }));
+      }
+    };
+    return anime.cssHooks[hook_name != null ? hook_name : prop_name] = {
+      get: function(arg1) {
+        var eased, el, from, to;
+        to = arg1.to, from = arg1.from, eased = arg1.eased, el = arg1.el;
+        console.log({
+          to: to,
+          from: from,
+          eased: eased
+        });
+        return css_val_from_initialized_tween({
+          tween: {
+            start: from,
+            end: to,
+            pos: eased,
+            elem: el
+          },
+          parsed_tween: parsed_tween
+        });
+      },
+      parse: function(arg1) {
+        var cssValue;
+        cssValue = arg1.cssValue;
+        return parse(cssValue);
+      },
+      parseTo: function(arg1) {
+        var from, to;
+        to = arg1.to, from = arg1.from;
+        return init_tween_end({
+          tween: {
+            start: from,
+            end: to
+          },
+          parse: parse
+        });
       }
     };
   };
@@ -403,7 +439,7 @@
               }
             };
             remaining = remaining.slice(all.length);
-            match = RegExp("^" + value_regex_chunk + "[^,\\n\\S]*([,\\n])\\s*").exec(remaining);
+            match = RegExp("^" + value_regex_chunk + "[^,\\n\\S]*([,\\n])?\\s*").exec(remaining);
             all = match[0], angle = match[1], first_direction = match[2], second_direction = match[3], position = match[4], unit = match[5], color = match[6], separator = match[7];
             pair.end = color != null ? {
               color: color
