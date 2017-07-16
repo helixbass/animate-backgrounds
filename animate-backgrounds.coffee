@@ -37,27 +37,26 @@ register_animation_handler = ({
       .css prop_name,
         css_val_from_initialized_tween {tween, parsed_tween}
 
-  anime.cssHooks[hook_name ? prop_name] = {
-    get: ({to, from, eased, el}) ->
-      console.log {to, from, eased}
-      css_val_from_initialized_tween {
-        tween:
-          start: from
-          end: to
-          pos: eased
-          elem: el
-        parsed_tween
-      }
-    parse: ({cssValue}) ->
-      parse cssValue
-    parseTo: ({to, from}) ->
-      init_tween_end {
-        tween:
-          start: from
-          end: to
-        parse
-      }
-  }
+  # anime.cssHooks[hook_name ? prop_name] = {
+  #   get: ({to, from, eased, el}) ->
+  #     css_val_from_initialized_tween {
+  #       tween:
+  #         start: from
+  #         end: to
+  #         pos: eased
+  #         elem: el
+  #       parsed_tween
+  #     }
+  #   parse: ({cssValue}) ->
+  #     parse cssValue
+  #   parseTo: ({to, from}) ->
+  #     init_tween_end {
+  #       tween:
+  #         start: from
+  #         end: to
+  #       parse
+  #     }
+  # }
 
 register_animation_handler
   prop_name: 'backgroundPosition'
@@ -361,6 +360,14 @@ value_regex_chunk = regex_chunk_str ///
   )
 ///
 
+index_regex_chunk = regex_chunk_str ///
+  (?:
+    \[
+    (\d +)
+    \]
+  )
+///
+
 angle_from_direction = ({angle, first_direction, second_direction}) ->
   return _int angle if angle
   if second_direction
@@ -395,8 +402,14 @@ gradient_handler = ({function_name, hook_name, parse_gradient, detect_gradient_t
       return yes if ///
         \s *
         #{value_regex_chunk}
+        (?:
+          \s +
+          #{length_regex_chunk}
+        ) ?
         \s *
         ->
+        |
+        #{index_regex_chunk}
       ///.exec end
     return parse end unless looks_like_shorthand end # TODO: error if end doesn't match start eg wrong # of background images/stops
 
@@ -412,49 +425,83 @@ gradient_handler = ({function_name, hook_name, parse_gradient, detect_gradient_t
         if match = ///
           ^
           \s *
-          \[
-          (\d +)
-          \]
+          #{index_regex_chunk}
         ///.exec remaining
           [all, index] = match
           remaining = remaining[all.length..]
+
+        # if match = ///
+        #   ^
+        #   \s *
+        #   #{index_regex_chunk}
+        # ///.exec remaining
+        #   [all, stop_index] = match
+        #   remaining = remaining[all.length..]
 
         match = ///
           ^
           \s *
           #{value_regex_chunk}
+          (?:
+            [^\n\S] +
+            #{length_regex_chunk}
+          ) ?
           \s *
           ->
           \s *
         ///.exec remaining
-        [all, angle, first_direction, second_direction, position, unit, color] = match
+        [
+          all
+          angle, first_direction, second_direction
+          position, unit
+          color
+          second_position, second_unit
+        ] = match
         pair =
-          if color?
-            type: 'color'
-            start: {color}
-          else if angle or first_direction
-            type: 'angle'
-            start: angle: angle_from_direction {angle, first_direction, second_direction}
-          else
-            type: 'length'
-            start: {unit, position: _int position}
+          type: switch
+            when color?
+              'color'
+            when angle or first_direction
+              'angle'
+            else
+              'length'
+        set_from_match_params = (start_or_end) ->
+          pair[start_or_end] =
+            if color?
+              {color}
+            else if angle or first_direction
+              angle: angle_from_direction {angle, first_direction, second_direction}
+            else
+              {unit, position: _int position}
+          if second_position
+            pair.type = 'full_stop' if start_or_end is 'start' # TODO: error if only start or end is a full stop?
+            extend pair[start_or_end],
+              unit: second_unit
+              position: _int second_position
+        set_from_match_params 'start'
+
         remaining = remaining[all.length..]
         match =
           ///
             ^
             #{value_regex_chunk}
-            [^,\n\S] *
+            (?:
+              [^\n\S] +
+              #{length_regex_chunk}
+            ) ?
+            [^\n\S] *
             ([,\n]) ?
             \s *
           ///.exec remaining
-        [all, angle, first_direction, second_direction, position, unit, color, separator] = match
-        pair.end = # TODO: check that same type as start?
-          if color?
-            {color}
-          else if angle or first_direction
-            angle: angle_from_direction {angle, first_direction, second_direction}
-          else
-            {unit, position: _int position}
+        [
+          all
+          angle, first_direction, second_direction
+          position, unit
+          color
+          second_position, second_unit
+          separator
+        ] = match
+        set_from_match_params 'end' # TODO: check that same type as start?
         (if index?
           indexed_parsed_pairs[index] ?= []
         else
@@ -495,6 +542,16 @@ gradient_handler = ({function_name, hook_name, parse_gradient, detect_gradient_t
                   color_change = color_change.alpha use_opacity
                 extend (changed_stop ?= {}),
                   color: color_change
+              when 'full_stop'
+                {position, unit, color} = start_change
+                continue unless position is stop.position and unit is stop.unit and _eq=color_eq color, stop.color
+                color_change = Color end_change.color
+                if use_opacity=_eq?.opacity
+                  color_change = color_change.alpha use_opacity
+                extend (changed_stop ?= {}),
+                  position: end_change.position
+                  unit:     end_change.unit
+                  color:    color_change
           ((changed ?= {}).stops ?= [])[stop_index] = changed_stop if changed_stop
         _change[image_index] = changed if changed
       _change # TODO: warn/error if no detected changes? warn for each changing_val that wasn't found anywhere?
