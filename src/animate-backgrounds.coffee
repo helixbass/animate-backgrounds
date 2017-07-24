@@ -719,7 +719,7 @@ export default (hook) ->
     {
       obj: {
         angle: angle_from_direction {angle, first_direction, second_direction}
-        angle_unit
+        angle_unit: angle_unit ? 'deg'
       }
       stops_str
     }

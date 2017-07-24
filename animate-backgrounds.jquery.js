@@ -789,7 +789,7 @@ exports.default = function (hook) {
           first_direction: first_direction,
           second_direction: second_direction
         }),
-        angle_unit: angle_unit
+        angle_unit: angle_unit != null ? angle_unit : 'deg'
       },
       stops_str: stops_str
     };

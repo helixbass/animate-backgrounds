@@ -789,7 +789,7 @@ exports.default = function (hook) {
           first_direction: first_direction,
           second_direction: second_direction
         }),
-        angle_unit: angle_unit
+        angle_unit: angle_unit != null ? angle_unit : 'deg'
       },
       stops_str: stops_str
     };
@@ -1137,12 +1137,6 @@ var _animateBackgrounds = __webpack_require__(1);
 var _animateBackgrounds2 = _interopRequireDefault(_animateBackgrounds);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-console.log({
-  anime: _animejs2.default,
-  v: _animejs2.default.version,
-  c: _animejs2.default.cssHooks
-});
 
 (0, _animateBackgrounds2.default)(function (arg) {
   var css_val_from_initialized_tween, hook_name, init_tween_end, _parse, parsed_tween, prop_name;

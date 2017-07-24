@@ -1,6 +1,5 @@
 import anime from 'animejs'
 import animation_hook from './animate-backgrounds'
-console.log {anime, v: anime.version, c: anime.cssHooks}
 
 animation_hook ({
   hook_name, prop_name
