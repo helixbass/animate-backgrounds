@@ -190,10 +190,16 @@ export default (hook) ->
             unit: _match[3] or 'px'
 
     init_tween_end: ({tween, parse}) ->
-      { start, end } = tween
+      {start, end} = tween
 
-      for endBg, bgIndex in parse end
-        map endBg, ( val, i ) ->
+      parsed = parse end
+      if parsed.length is 1 and parsed.length < start.length
+        parsed =
+          # repeat parsed[0], start.length
+          for bg in start
+            parsed[0]
+      for endBg, bgIndex in parsed
+        map endBg, (val, i) ->
           return val unless val?.unit
           {rel_op, amount} = val
           return val unless rel_op
