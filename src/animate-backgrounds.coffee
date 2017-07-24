@@ -101,7 +101,13 @@ export default (hook) ->
     init_tween_end: ({tween, parse}) ->
       { start, end } = tween
 
-      for endBg, bgIndex in parse end
+      parsed = parse end
+      if parsed.length is 1 and parsed.length < start.length
+        parsed =
+          # repeat parsed[0], start.length
+          for bg in start
+            parsed[0]
+      for endBg, bgIndex in parsed
         map endBg, ( val, i ) ->
           {rel_op, amount} = val
           return val unless rel_op

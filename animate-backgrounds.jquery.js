@@ -163,13 +163,24 @@ exports.default = function (hook) {
       return results;
     },
     init_tween_end: function init_tween_end(arg) {
-      var bgIndex, end, endBg, j, len, parse, ref, results, start, tween;
+      var bg, bgIndex, end, endBg, j, len, parse, parsed, results, start, tween;
       tween = arg.tween, parse = arg.parse;
       start = tween.start, end = tween.end;
-      ref = parse(end);
+      parsed = parse(end);
+      if (parsed.length === 1 && parsed.length < start.length) {
+        parsed = function () {
+          var j, len, results;
+          results = [];
+          for (j = 0, len = start.length; j < len; j++) {
+            bg = start[j];
+            results.push(parsed[0]);
+          }
+          return results;
+        }();
+      }
       results = [];
-      for (bgIndex = j = 0, len = ref.length; j < len; bgIndex = ++j) {
-        endBg = ref[bgIndex];
+      for (bgIndex = j = 0, len = parsed.length; j < len; bgIndex = ++j) {
+        endBg = parsed[bgIndex];
         results.push(map(endBg, function (val, i) {
           var amount, rel_op;
           rel_op = val.rel_op, amount = val.amount;
