@@ -813,7 +813,7 @@ export default (hook) ->
             \s +
             #{shape_regex_chunk}
           ) ?
-        )
+        ) ?
         (?:
           \s +
           #{position_regex_chunk}
