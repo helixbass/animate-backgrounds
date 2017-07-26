@@ -815,7 +815,7 @@ export default (hook) ->
           ) ?
         ) ?
         (?:
-          \s +
+          \s *
           #{position_regex_chunk}
         ) ?
         \s *
