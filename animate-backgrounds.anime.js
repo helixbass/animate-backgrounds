@@ -1002,7 +1002,7 @@ var equals, mix;
 equals = _tinycolor2.default.equals, mix = _tinycolor2.default.mix;
 
 (0, _animateBackgrounds2.default)({
-  color: {
+  Color: {
     eq: equals,
     create: _tinycolor2.default,
     setAlpha: function setAlpha(color, val) {

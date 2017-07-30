@@ -154,7 +154,7 @@ extend Color.names,
   yellowgreen: '#9acd32'
 
 animation_hook
-  color:
+  Color:
     eq: (a, b) ->
       Color(a).is b
     create: Color

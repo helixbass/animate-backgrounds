@@ -4,7 +4,7 @@ import tinycolor from 'tinycolor2'
 {equals, mix} = tinycolor
 
 animation_hook
-  color:
+  Color:
     eq: equals
     create: tinycolor
     setAlpha: (color, val) ->

@@ -1155,7 +1155,7 @@ extend(Color.names, {
 });
 
 (0, _animateBackgrounds2.default)({
-  color: {
+  Color: {
     eq: function eq(a, b) {
       return Color(a).is(b);
     },
