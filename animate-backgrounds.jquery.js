@@ -7,7 +7,7 @@
 		var a = typeof exports === 'object' ? factory(require("jquery")) : factory(root["jQuery"]);
 		for(var i in a) (typeof exports === 'object' ? exports : root)[i] = a[i];
 	}
-})(this, function(__WEBPACK_EXTERNAL_MODULE_0__) {
+})(this, function(__WEBPACK_EXTERNAL_MODULE_1__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -75,12 +75,6 @@ return /******/ (function(modules) { // webpackBootstrap
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ (function(module, exports) {
-
-module.exports = __WEBPACK_EXTERNAL_MODULE_0__;
-
-/***/ }),
-/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -90,13 +84,14 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-exports.default = function (hook) {
-  var _int, angle_from_direction, angle_or_direction_regex_chunk, color_eq, color_regex_chunk, gradient_handler, index_regex_chunk, length_regex_chunk, parse_linear_gradient, parse_radial_gradient, pre_stops_css_linear_gradient, pre_stops_css_radial_gradient, regex_chunk_str, register_animation_handler, scaled, value_regex_chunk;
-  register_animation_handler = function register_animation_handler(arg) {
+exports.default = function (arg) {
+  var Color, _int, angle_from_direction, angle_or_direction_regex_chunk, color_regex_chunk, gradient_handler, hook, index_regex_chunk, length_regex_chunk, parse_linear_gradient, parse_radial_gradient, pre_stops_css_linear_gradient, pre_stops_css_radial_gradient, regex_chunk_str, register_animation_handler, scaled, value_regex_chunk;
+  hook = arg.hook, Color = arg.Color;
+  register_animation_handler = function register_animation_handler(arg1) {
     var css_val_from_initialized_tween, hook_name, init, init_tween_end, parse, parsed_tween, prop_name;
-    prop_name = arg.prop_name, hook_name = arg.hook_name, parse = arg.parse, init_tween_end = arg.init_tween_end, css_val_from_initialized_tween = arg.css_val_from_initialized_tween;
+    prop_name = arg1.prop_name, hook_name = arg1.hook_name, parse = arg1.parse, init_tween_end = arg1.init_tween_end, css_val_from_initialized_tween = arg1.css_val_from_initialized_tween;
     parsed_tween = function parsed_tween(tween) {
-      return parse((0, _jquery2.default)(tween.elem).css(prop_name));
+      return parse($(tween.elem).css(prop_name));
     };
     init = function init(tween) {
       tween.start = parsed_tween(tween);
@@ -162,9 +157,9 @@ exports.default = function (hook) {
       }
       return results;
     },
-    init_tween_end: function init_tween_end(arg) {
+    init_tween_end: function init_tween_end(arg1) {
       var bg, bgIndex, end, endBg, j, len, parse, parsed, results, start, tween;
-      tween = arg.tween, parse = arg.parse;
+      tween = arg1.tween, parse = arg1.parse;
       start = tween.start, end = tween.end;
       parsed = parse(end);
       if (parsed.length === 1 && parsed.length < start.length) {
@@ -193,9 +188,9 @@ exports.default = function (hook) {
       }
       return results;
     },
-    css_val_from_initialized_tween: function css_val_from_initialized_tween(arg) {
+    css_val_from_initialized_tween: function css_val_from_initialized_tween(arg1) {
       var _adjusted, _span, bgEnd, bgIndex, bgStart, dim, end, pos, start, tween;
-      tween = arg.tween;
+      tween = arg1.tween;
       pos = tween.pos, start = tween.start, end = tween.end;
       return function () {
         var j, len, results;
@@ -264,9 +259,9 @@ exports.default = function (hook) {
       }
       return results;
     },
-    init_tween_end: function init_tween_end(arg) {
+    init_tween_end: function init_tween_end(arg1) {
       var bg, bgIndex, end, endBg, j, len, parse, parsed, results, start, tween;
-      tween = arg.tween, parse = arg.parse;
+      tween = arg1.tween, parse = arg1.parse;
       start = tween.start, end = tween.end;
       parsed = parse(end);
       if (parsed.length === 1 && parsed.length < start.length) {
@@ -298,9 +293,9 @@ exports.default = function (hook) {
       }
       return results;
     },
-    css_val_from_initialized_tween: function css_val_from_initialized_tween(arg) {
+    css_val_from_initialized_tween: function css_val_from_initialized_tween(arg1) {
       var _adjusted, _span, bg_end, bg_index, bg_start, bg_start_dim, dim, end, pos, start, tween;
-      tween = arg.tween;
+      tween = arg1.tween;
       pos = tween.pos, start = tween.start, end = tween.end;
       return function () {
         var j, len, results;
@@ -344,9 +339,9 @@ exports.default = function (hook) {
   };
   length_regex_chunk = regex_chunk_str(/(?:([+-]?\d+(?:\.\d*)?)(%|\w+))/);
   color_regex_chunk = regex_chunk_str(/((?:rgba?\([^)]*\))|(?:hsla?\([^)]*\))|(?:\#[0-9A-Fa-f]+)|\w+)/);
-  scaled = function scaled(arg) {
+  scaled = function scaled(arg1) {
     var end, pos, prop, start, val;
-    start = arg.start, end = arg.end, pos = arg.pos, prop = arg.prop;
+    start = arg1.start, end = arg1.end, pos = arg1.pos, prop = arg1.prop;
     if (prop) {
       if (is_string(prop)) {
         prop = function (prop) {
@@ -361,34 +356,12 @@ exports.default = function (hook) {
     val = start + pos * (end - start);
     return val;
   };
-  color_eq = function color_eq(a, b) {
-    var component, component_index, j, len, ref;
-    if (!(a instanceof Color)) {
-      a = Color(a);
-    }
-    if (!(b instanceof Color)) {
-      b = Color(b);
-    }
-    ref = a._rgba.slice(0, 3);
-    for (component_index = j = 0, len = ref.length; j < len; component_index = ++j) {
-      component = ref[component_index];
-      if (b._rgba[component_index] !== component) {
-        return false;
-      }
-    }
-    if (a._rgba[3] === b._rgba[3]) {
-      return true;
-    }
-    return {
-      opacity: b._rgba[3]
-    };
-  };
   angle_or_direction_regex_chunk = regex_chunk_str(/(?:(-?\d+(?:.\d+)?)(deg|grad|rad|turn)|to\s+(bottom|top|left|right)(?:\s+(bottom|top|left|right))?)/);
   value_regex_chunk = regex_chunk_str(RegExp("(?:" + angle_or_direction_regex_chunk + "|" + length_regex_chunk + "|" + color_regex_chunk + ")"));
   index_regex_chunk = regex_chunk_str(/(?:\[(\d+)\])/);
-  angle_from_direction = function angle_from_direction(arg) {
+  angle_from_direction = function angle_from_direction(arg1) {
     var angle, first_direction, second_direction;
-    angle = arg.angle, first_direction = arg.first_direction, second_direction = arg.second_direction;
+    angle = arg1.angle, first_direction = arg1.first_direction, second_direction = arg1.second_direction;
     if (angle) {
       return _int(angle);
     }
@@ -424,15 +397,15 @@ exports.default = function (hook) {
       }();
     }
   };
-  gradient_handler = function gradient_handler(arg) {
+  gradient_handler = function gradient_handler(arg1) {
     var detect_gradient_type, function_name, hook_name, parse_gradient, pre_stops_css;
-    function_name = arg.function_name, hook_name = arg.hook_name, parse_gradient = arg.parse_gradient, detect_gradient_type = arg.detect_gradient_type, pre_stops_css = arg.pre_stops_css;
+    function_name = arg1.function_name, hook_name = arg1.hook_name, parse_gradient = arg1.parse_gradient, detect_gradient_type = arg1.detect_gradient_type, pre_stops_css = arg1.pre_stops_css;
     return {
       hook_name: hook_name,
       prop_name: 'backgroundImage',
-      init_tween_end: function init_tween_end(arg1) {
+      init_tween_end: function init_tween_end(arg2) {
         var changing_vals, end, looks_like_shorthand, parse, start, tween;
-        tween = arg1.tween, parse = arg1.parse;
+        tween = arg2.tween, parse = arg2.parse;
         start = tween.start, end = tween.end;
         looks_like_shorthand = function looks_like_shorthand(end) {
           if (RegExp("\\s*" + value_regex_chunk + "(?:\\s+" + length_regex_chunk + ")?\\s*->|" + index_regex_chunk).exec(end)) {
@@ -542,12 +515,12 @@ exports.default = function (hook) {
                       break;
                     case 'color':
                       color = start_change.color;
-                      if (!(_eq = color_eq(color, stop.color))) {
+                      if (!(_eq = Color.eq(color, stop.color))) {
                         continue;
                       }
-                      color_change = Color(end_change.color);
+                      color_change = Color.create(end_change.color);
                       if (use_opacity = _eq != null ? _eq.opacity : void 0) {
-                        color_change = color_change.alpha(use_opacity);
+                        color_change = Color.setAlpha(color_change, use_opacity);
                       }
                       extend(changed_stop != null ? changed_stop : changed_stop = {}, {
                         color: color_change
@@ -555,12 +528,12 @@ exports.default = function (hook) {
                       break;
                     case 'full_stop':
                       position = start_change.position, unit = start_change.unit, color = start_change.color;
-                      if (!(position === stop.position && unit === stop.unit && (_eq = color_eq(color, stop.color)))) {
+                      if (!(position === stop.position && unit === stop.unit && (_eq = Color.eq(color, stop.color)))) {
                         continue;
                       }
-                      color_change = Color(end_change.color);
+                      color_change = Color.create(end_change.color);
                       if (use_opacity = _eq != null ? _eq.opacity : void 0) {
-                        color_change = color_change.alpha(use_opacity);
+                        color_change = Color.setAlpha(color_change, use_opacity);
                       }
                       extend(changed_stop != null ? changed_stop : changed_stop = {}, {
                         position: end_change.position,
@@ -636,16 +609,16 @@ exports.default = function (hook) {
                       unit = '%';
                     }
                     results1.push({
-                      color: Color(color),
+                      color: Color.create(color),
                       position: position != null ? _int(position) : void 0,
                       unit: unit != null ? unit : 'px'
                     });
                   }
                   return results1;
                 }();
-                fill_in_missing = function fill_in_missing(arg1) {
+                fill_in_missing = function fill_in_missing(arg2) {
                   var current_position, following_stop_position, k, len1, missing, missing_stop, per, prev_stop_position, results1;
-                  missing = arg1.missing, prev_stop_position = arg1.prev_stop_position, following_stop_position = arg1.following_stop_position;
+                  missing = arg2.missing, prev_stop_position = arg2.prev_stop_position, following_stop_position = arg2.following_stop_position;
                   per = (following_stop_position - prev_stop_position) / (missing.length + 1);
                   current_position = prev_stop_position;
                   results1 = [];
@@ -656,9 +629,9 @@ exports.default = function (hook) {
                   }
                   return results1;
                 };
-                assign_missing_stop_positions = function assign_missing_stop_positions(arg1) {
+                assign_missing_stop_positions = function assign_missing_stop_positions(arg2) {
                   var following_stop, following_stop_index, k, len1, missing, prev_stop_position, ref1, stop_index;
-                  stop_index = arg1.stop_index, prev_stop_position = arg1.prev_stop_position;
+                  stop_index = arg2.stop_index, prev_stop_position = arg2.prev_stop_position;
                   missing = [stop];
                   ref1 = stops.slice(stop_index + 1);
                   for (following_stop_index = k = 0, len1 = ref1.length; k < len1; following_stop_index = ++k) {
@@ -703,9 +676,9 @@ exports.default = function (hook) {
         }
         return results;
       },
-      css_val_from_initialized_tween: function css_val_from_initialized_tween(arg1) {
+      css_val_from_initialized_tween: function css_val_from_initialized_tween(arg2) {
         var _change, current, end, get_current, image, image_index, parsed_tween, pos, start, tween;
-        tween = arg1.tween, parsed_tween = arg1.parsed_tween;
+        tween = arg2.tween, parsed_tween = arg2.parsed_tween;
         pos = tween.pos, start = tween.start, end = tween.end;
         _change = end._change;
         current = null;
@@ -746,7 +719,11 @@ exports.default = function (hook) {
                     current_stop = current_image.stops[stop_index];
                     if (stop_change = end_change != null ? (ref1 = end_change.stops) != null ? ref1[stop_index] : void 0 : void 0) {
                       results1.push({
-                        color: (color_change = stop_change.color) ? color.transition(color_change, pos) : current_stop.color,
+                        color: (color_change = stop_change.color) ? Color.transition({
+                          start: color,
+                          end: color_change,
+                          pos: pos
+                        }) : current_stop.color,
                         position: (position_change = stop_change.position) ? scaled({
                           start: position,
                           end: position_change,
@@ -759,10 +736,14 @@ exports.default = function (hook) {
                     }
                   } else {
                     results1.push({
-                      color: color.transition(end_image.stops[stop_index].color, pos),
-                      position: _scaled(function (arg2) {
+                      color: Color.transition({
+                        start: color,
+                        end: end_image.stops[stop_index].color,
+                        pos: pos
+                      }),
+                      position: _scaled(function (arg3) {
                         var stops;
-                        stops = arg2.stops;
+                        stops = arg3.stops;
                         return stops[stop_index].position;
                       }),
                       unit: unit
@@ -796,9 +777,9 @@ exports.default = function (hook) {
       }
     };
   };
-  parse_linear_gradient = function parse_linear_gradient(arg) {
+  parse_linear_gradient = function parse_linear_gradient(arg1) {
     var all, angle, angle_unit, first_direction, function_name, image, match, second_direction, stops_str;
-    image = arg.image, function_name = arg.function_name;
+    image = arg1.image, function_name = arg1.function_name;
     match = RegExp("^\\s*" + function_name + "\\(\\s*(?:" + angle_or_direction_regex_chunk + "\\s*,\\s*)?(.+)\\)\\s*$").exec(image);
     if (!match) {
       return image;
@@ -816,9 +797,9 @@ exports.default = function (hook) {
       stops_str: stops_str
     };
   };
-  pre_stops_css_linear_gradient = function pre_stops_css_linear_gradient(arg) {
+  pre_stops_css_linear_gradient = function pre_stops_css_linear_gradient(arg1) {
     var _change, angle_change, angle_unit, end_change, end_gradient, get_current_image, pos, start_gradient;
-    start_gradient = arg.start_gradient, end_gradient = arg.end_gradient, end_change = arg.end_change, _change = arg._change, pos = arg.pos, get_current_image = arg.get_current_image;
+    start_gradient = arg1.start_gradient, end_gradient = arg1.end_gradient, end_change = arg1.end_change, _change = arg1._change, pos = arg1.pos, get_current_image = arg1.get_current_image;
     angle_unit = start_gradient.angle_unit;
     return "" + (_change ? (angle_change = end_change != null ? end_change.angle : void 0) ? scaled({
       start: start_gradient.angle,
@@ -843,9 +824,9 @@ exports.default = function (hook) {
     parse_gradient: parse_linear_gradient,
     pre_stops_css: pre_stops_css_linear_gradient
   }));
-  parse_radial_gradient = function parse_radial_gradient(arg) {
+  parse_radial_gradient = function parse_radial_gradient(arg1) {
     var all, extent1, extent2, extent_regex_chunk, function_name, image, keyword1, keyword2, match, position1, position2, position_regex_chunk, ref, shape1, shape2, shape_regex_chunk, single_position_regex_chunk, stops_str, unit1, unit2;
-    image = arg.image, function_name = arg.function_name;
+    image = arg1.image, function_name = arg1.function_name;
     shape_regex_chunk = regex_chunk_str(/(circle|ellipse)/);
     extent_regex_chunk = regex_chunk_str(/(closest-corner|closest-side|farthest-corner|farthest-side)/);
     single_position_regex_chunk = regex_chunk_str(RegExp("(?:(left|center|right|top|bottom)|" + length_regex_chunk + ")"));
@@ -911,9 +892,9 @@ exports.default = function (hook) {
       stops_str: stops_str
     };
   };
-  pre_stops_css_radial_gradient = function pre_stops_css_radial_gradient(arg) {
+  pre_stops_css_radial_gradient = function pre_stops_css_radial_gradient(arg1) {
     var end_change, end_gradient, extent, pos, position, shape, start_gradient;
-    start_gradient = arg.start_gradient, end_gradient = arg.end_gradient, end_change = arg.end_change, pos = arg.pos;
+    start_gradient = arg1.start_gradient, end_gradient = arg1.end_gradient, end_change = arg1.end_change, pos = arg1.pos;
     shape = start_gradient.shape, extent = start_gradient.extent, position = start_gradient.position;
     return "" + shape + (extent ? " " + extent : '') + " at " + position[0].position + position[0].unit + " " + position[1].position + position[1].unit + ", ";
   };
@@ -923,7 +904,7 @@ exports.default = function (hook) {
     parse_gradient: parse_radial_gradient,
     pre_stops_css: pre_stops_css_radial_gradient
   }));
-  register_animation_handler(gradient_handler({
+  return register_animation_handler(gradient_handler({
     detect_gradient_type: function detect_gradient_type(image) {
       var all, function_name, match;
       match = /^\s*(linear-gradient|repeating-linear-gradient|radial-gradient|repeating-radial-gradient)\(/.exec(image);
@@ -950,178 +931,16 @@ exports.default = function (hook) {
       }());
     }
   }));
-  return extend(Color.names, {
-    aliceblue: '#f0f8ff',
-    antiquewhite: '#faebd7',
-    aqua: '#00ffff',
-    aquamarine: '#7fffd4',
-    azure: '#f0ffff',
-    beige: '#f5f5dc',
-    bisque: '#ffe4c4',
-    black: '#000000',
-    blanchedalmond: '#ffebcd',
-    blue: '#0000ff',
-    blueviolet: '#8a2be2',
-    brown: '#a52a2a',
-    burlywood: '#deb887',
-    cadetblue: '#5f9ea0',
-    chartreuse: '#7fff00',
-    chocolate: '#d2691e',
-    coral: '#ff7f50',
-    cornflowerblue: '#6495ed',
-    cornsilk: '#fff8dc',
-    crimson: '#dc143c',
-    cyan: '#00ffff',
-    darkblue: '#00008b',
-    darkcyan: '#008b8b',
-    darkgoldenrod: '#b8860b',
-    darkgray: '#a9a9a9',
-    darkgreen: '#006400',
-    darkgrey: '#a9a9a9',
-    darkkhaki: '#bdb76b',
-    darkmagenta: '#8b008b',
-    darkolivegreen: '#556b2f',
-    darkorange: '#ff8c00',
-    darkorchid: '#9932cc',
-    darkred: '#8b0000',
-    darksalmon: '#e9967a',
-    darkseagreen: '#8fbc8f',
-    darkslateblue: '#483d8b',
-    darkslategray: '#2f4f4f',
-    darkslategrey: '#2f4f4f',
-    darkturquoise: '#00ced1',
-    darkviolet: '#9400d3',
-    deeppink: '#ff1493',
-    deepskyblue: '#00bfff',
-    dimgray: '#696969',
-    dimgrey: '#696969',
-    dodgerblue: '#1e90ff',
-    firebrick: '#b22222',
-    floralwhite: '#fffaf0',
-    forestgreen: '#228b22',
-    fuchsia: '#ff00ff',
-    gainsboro: '#dcdcdc',
-    ghostwhite: '#f8f8ff',
-    gold: '#ffd700',
-    goldenrod: '#daa520',
-    gray: '#808080',
-    green: '#008000',
-    greenyellow: '#adff2f',
-    grey: '#808080',
-    honeydew: '#f0fff0',
-    hotpink: '#ff69b4',
-    indianred: '#cd5c5c',
-    indigo: '#4b0082',
-    ivory: '#fffff0',
-    khaki: '#f0e68c',
-    lavender: '#e6e6fa',
-    lavenderblush: '#fff0f5',
-    lawngreen: '#7cfc00',
-    lemonchiffon: '#fffacd',
-    lightblue: '#add8e6',
-    lightcoral: '#f08080',
-    lightcyan: '#e0ffff',
-    lightgoldenrodyellow: '#fafad2',
-    lightgray: '#d3d3d3',
-    lightgreen: '#90ee90',
-    lightgrey: '#d3d3d3',
-    lightpink: '#ffb6c1',
-    lightsalmon: '#ffa07a',
-    lightseagreen: '#20b2aa',
-    lightskyblue: '#87cefa',
-    lightslategray: '#778899',
-    lightslategrey: '#778899',
-    lightsteelblue: '#b0c4de',
-    lightyellow: '#ffffe0',
-    lime: '#00ff00',
-    limegreen: '#32cd32',
-    linen: '#faf0e6',
-    magenta: '#ff00ff',
-    maroon: '#800000',
-    mediumaquamarine: '#66cdaa',
-    mediumblue: '#0000cd',
-    mediumorchid: '#ba55d3',
-    mediumpurple: '#9370db',
-    mediumseagreen: '#3cb371',
-    mediumslateblue: '#7b68ee',
-    mediumspringgreen: '#00fa9a',
-    mediumturquoise: '#48d1cc',
-    mediumvioletred: '#c71585',
-    midnightblue: '#191970',
-    mintcream: '#f5fffa',
-    mistyrose: '#ffe4e1',
-    moccasin: '#ffe4b5',
-    navajowhite: '#ffdead',
-    navy: '#000080',
-    oldlace: '#fdf5e6',
-    olive: '#808000',
-    olivedrab: '#6b8e23',
-    orange: '#ffa500',
-    orangered: '#ff4500',
-    orchid: '#da70d6',
-    palegoldenrod: '#eee8aa',
-    palegreen: '#98fb98',
-    paleturquoise: '#afeeee',
-    palevioletred: '#db7093',
-    papayawhip: '#ffefd5',
-    peachpuff: '#ffdab9',
-    peru: '#cd853f',
-    pink: '#ffc0cb',
-    plum: '#dda0dd',
-    powderblue: '#b0e0e6',
-    purple: '#800080',
-    rebeccapurple: '#663399',
-    red: '#ff0000',
-    rosybrown: '#bc8f8f',
-    royalblue: '#4169e1',
-    saddlebrown: '#8b4513',
-    salmon: '#fa8072',
-    sandybrown: '#f4a460',
-    seagreen: '#2e8b57',
-    seashell: '#fff5ee',
-    sienna: '#a0522d',
-    silver: '#c0c0c0',
-    skyblue: '#87ceeb',
-    slateblue: '#6a5acd',
-    slategray: '#708090',
-    slategrey: '#708090',
-    snow: '#fffafa',
-    springgreen: '#00ff7f',
-    steelblue: '#4682b4',
-    tan: '#d2b48c',
-    teal: '#008080',
-    thistle: '#d8bfd8',
-    tomato: '#ff6347',
-    turquoise: '#40e0d0',
-    violet: '#ee82ee',
-    wheat: '#f5deb3',
-    white: '#ffffff',
-    whitesmoke: '#f5f5f5',
-    yellow: '#ffff00',
-    yellowgreen: '#9acd32'
-  });
 };
 
-var _jquery = __webpack_require__(0);
-
-var _jquery2 = _interopRequireDefault(_jquery);
-
-__webpack_require__(0);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var Color,
-    Tween,
-    extend,
+var extend,
     extended,
     is_string,
     map,
     slice = [].slice;
 
-extend = _jquery2.default.extend, Tween = _jquery2.default.Tween, Color = _jquery2.default.Color;
-
 is_string = function is_string(obj) {
-  return 'string' === _jquery2.default.type(obj);
+  return 'string' === $.type(obj);
 };
 
 map = function map(arr, clb) {
@@ -1134,6 +953,19 @@ map = function map(arr, clb) {
   return results;
 };
 
+extend = function extend() {
+  var _obj, j, key, len, obj, objs, val;
+  obj = arguments[0], objs = 2 <= arguments.length ? slice.call(arguments, 1) : [];
+  for (j = 0, len = objs.length; j < len; j++) {
+    _obj = objs[j];
+    for (key in _obj) {
+      val = _obj[key];
+      obj[key] = val;
+    }
+  }
+  return obj;
+};
+
 extended = function extended() {
   var obj, objs;
   obj = arguments[0], objs = 2 <= arguments.length ? slice.call(arguments, 1) : [];
@@ -1143,37 +975,216 @@ extended = function extended() {
 ;
 
 /***/ }),
+/* 1 */
+/***/ (function(module, exports) {
+
+module.exports = __WEBPACK_EXTERNAL_MODULE_1__;
+
+/***/ }),
 /* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var _jquery = __webpack_require__(0);
+var _jquery = __webpack_require__(1);
 
 var _jquery2 = _interopRequireDefault(_jquery);
 
-var _animateBackgrounds = __webpack_require__(1);
+__webpack_require__(1);
+
+var _animateBackgrounds = __webpack_require__(0);
 
 var _animateBackgrounds2 = _interopRequireDefault(_animateBackgrounds);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-(0, _animateBackgrounds2.default)(function (arg) {
-  var css_val_from_initialized_tween, hook_name, init, init_tween_end, parse, parsed_tween, prop_name;
-  hook_name = arg.hook_name, prop_name = arg.prop_name, css_val_from_initialized_tween = arg.css_val_from_initialized_tween, parsed_tween = arg.parsed_tween, parse = arg.parse, init_tween_end = arg.init_tween_end, init = arg.init;
-  return Tween.propHooks[hook_name != null ? hook_name : prop_name] = {
-    get: parsed_tween,
-    set: function set(tween) {
-      if (!tween.set) {
-        init(tween);
-      }
-      return (0, _jquery2.default)(tween.elem).css(prop_name, css_val_from_initialized_tween({
-        tween: tween,
-        parsed_tween: parsed_tween
-      }));
+var Color, Tween;
+
+Tween = _jquery2.default.Tween, Color = _jquery2.default.Color;
+
+extend(Color.names, {
+  aliceblue: '#f0f8ff',
+  antiquewhite: '#faebd7',
+  aqua: '#00ffff',
+  aquamarine: '#7fffd4',
+  azure: '#f0ffff',
+  beige: '#f5f5dc',
+  bisque: '#ffe4c4',
+  black: '#000000',
+  blanchedalmond: '#ffebcd',
+  blue: '#0000ff',
+  blueviolet: '#8a2be2',
+  brown: '#a52a2a',
+  burlywood: '#deb887',
+  cadetblue: '#5f9ea0',
+  chartreuse: '#7fff00',
+  chocolate: '#d2691e',
+  coral: '#ff7f50',
+  cornflowerblue: '#6495ed',
+  cornsilk: '#fff8dc',
+  crimson: '#dc143c',
+  cyan: '#00ffff',
+  darkblue: '#00008b',
+  darkcyan: '#008b8b',
+  darkgoldenrod: '#b8860b',
+  darkgray: '#a9a9a9',
+  darkgreen: '#006400',
+  darkgrey: '#a9a9a9',
+  darkkhaki: '#bdb76b',
+  darkmagenta: '#8b008b',
+  darkolivegreen: '#556b2f',
+  darkorange: '#ff8c00',
+  darkorchid: '#9932cc',
+  darkred: '#8b0000',
+  darksalmon: '#e9967a',
+  darkseagreen: '#8fbc8f',
+  darkslateblue: '#483d8b',
+  darkslategray: '#2f4f4f',
+  darkslategrey: '#2f4f4f',
+  darkturquoise: '#00ced1',
+  darkviolet: '#9400d3',
+  deeppink: '#ff1493',
+  deepskyblue: '#00bfff',
+  dimgray: '#696969',
+  dimgrey: '#696969',
+  dodgerblue: '#1e90ff',
+  firebrick: '#b22222',
+  floralwhite: '#fffaf0',
+  forestgreen: '#228b22',
+  fuchsia: '#ff00ff',
+  gainsboro: '#dcdcdc',
+  ghostwhite: '#f8f8ff',
+  gold: '#ffd700',
+  goldenrod: '#daa520',
+  gray: '#808080',
+  green: '#008000',
+  greenyellow: '#adff2f',
+  grey: '#808080',
+  honeydew: '#f0fff0',
+  hotpink: '#ff69b4',
+  indianred: '#cd5c5c',
+  indigo: '#4b0082',
+  ivory: '#fffff0',
+  khaki: '#f0e68c',
+  lavender: '#e6e6fa',
+  lavenderblush: '#fff0f5',
+  lawngreen: '#7cfc00',
+  lemonchiffon: '#fffacd',
+  lightblue: '#add8e6',
+  lightcoral: '#f08080',
+  lightcyan: '#e0ffff',
+  lightgoldenrodyellow: '#fafad2',
+  lightgray: '#d3d3d3',
+  lightgreen: '#90ee90',
+  lightgrey: '#d3d3d3',
+  lightpink: '#ffb6c1',
+  lightsalmon: '#ffa07a',
+  lightseagreen: '#20b2aa',
+  lightskyblue: '#87cefa',
+  lightslategray: '#778899',
+  lightslategrey: '#778899',
+  lightsteelblue: '#b0c4de',
+  lightyellow: '#ffffe0',
+  lime: '#00ff00',
+  limegreen: '#32cd32',
+  linen: '#faf0e6',
+  magenta: '#ff00ff',
+  maroon: '#800000',
+  mediumaquamarine: '#66cdaa',
+  mediumblue: '#0000cd',
+  mediumorchid: '#ba55d3',
+  mediumpurple: '#9370db',
+  mediumseagreen: '#3cb371',
+  mediumslateblue: '#7b68ee',
+  mediumspringgreen: '#00fa9a',
+  mediumturquoise: '#48d1cc',
+  mediumvioletred: '#c71585',
+  midnightblue: '#191970',
+  mintcream: '#f5fffa',
+  mistyrose: '#ffe4e1',
+  moccasin: '#ffe4b5',
+  navajowhite: '#ffdead',
+  navy: '#000080',
+  oldlace: '#fdf5e6',
+  olive: '#808000',
+  olivedrab: '#6b8e23',
+  orange: '#ffa500',
+  orangered: '#ff4500',
+  orchid: '#da70d6',
+  palegoldenrod: '#eee8aa',
+  palegreen: '#98fb98',
+  paleturquoise: '#afeeee',
+  palevioletred: '#db7093',
+  papayawhip: '#ffefd5',
+  peachpuff: '#ffdab9',
+  peru: '#cd853f',
+  pink: '#ffc0cb',
+  plum: '#dda0dd',
+  powderblue: '#b0e0e6',
+  purple: '#800080',
+  rebeccapurple: '#663399',
+  red: '#ff0000',
+  rosybrown: '#bc8f8f',
+  royalblue: '#4169e1',
+  saddlebrown: '#8b4513',
+  salmon: '#fa8072',
+  sandybrown: '#f4a460',
+  seagreen: '#2e8b57',
+  seashell: '#fff5ee',
+  sienna: '#a0522d',
+  silver: '#c0c0c0',
+  skyblue: '#87ceeb',
+  slateblue: '#6a5acd',
+  slategray: '#708090',
+  slategrey: '#708090',
+  snow: '#fffafa',
+  springgreen: '#00ff7f',
+  steelblue: '#4682b4',
+  tan: '#d2b48c',
+  teal: '#008080',
+  thistle: '#d8bfd8',
+  tomato: '#ff6347',
+  turquoise: '#40e0d0',
+  violet: '#ee82ee',
+  wheat: '#f5deb3',
+  white: '#ffffff',
+  whitesmoke: '#f5f5f5',
+  yellow: '#ffff00',
+  yellowgreen: '#9acd32'
+});
+
+(0, _animateBackgrounds2.default)({
+  color: {
+    eq: function eq(a, b) {
+      return Color(a).is(b);
+    },
+    create: Color,
+    setAlpha: function setAlpha(color, val) {
+      return color.alpha(val);
+    },
+    transition: function transition(arg) {
+      var end, pos, start;
+      start = arg.start, end = arg.end, pos = arg.pos;
+      return start.transition(end, pos);
     }
-  };
+  },
+  hook: function hook(arg) {
+    var css_val_from_initialized_tween, hook_name, init, init_tween_end, parse, parsed_tween, prop_name;
+    hook_name = arg.hook_name, prop_name = arg.prop_name, css_val_from_initialized_tween = arg.css_val_from_initialized_tween, parsed_tween = arg.parsed_tween, parse = arg.parse, init_tween_end = arg.init_tween_end, init = arg.init;
+    return Tween.propHooks[hook_name != null ? hook_name : prop_name] = {
+      get: parsed_tween,
+      set: function set(tween) {
+        if (!tween.set) {
+          init(tween);
+        }
+        return (0, _jquery2.default)(tween.elem).css(prop_name, css_val_from_initialized_tween({
+          tween: tween,
+          parsed_tween: parsed_tween
+        }));
+      }
+    };
+  }
 });
 
 /***/ })

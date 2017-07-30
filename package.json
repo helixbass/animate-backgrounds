@@ -29,6 +29,7 @@
     "coffee-loader": "^0.7.3",
     "jquery": "^3.2.1",
     "jquery-color": "github:jquery/jquery-color",
+    "tinycolor2": "^1.4.1",
     "webpack": "^3.3.0"
   }
 }

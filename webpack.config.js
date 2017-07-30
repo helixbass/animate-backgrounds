@@ -39,5 +39,11 @@ module.exports = {
       amd: 'animejs',
       root: 'anime',
     },
+    // tinycolor2: {
+    //   commonjs: 'tinycolor2',
+    //   commonjs2: 'tinycolor2',
+    //   amd: 'animejs',
+    //   root: 'tinycolor',
+    // },
   },
 }
