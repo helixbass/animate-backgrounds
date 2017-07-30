@@ -21,10 +21,7 @@ export default ({hook, Color}) ->
     css_val_from_initialized_tween
   }) ->
     parsed_tween = (tween) ->
-      parse(
-        window.getComputedStyle tween.elem
-        .getPropertyValue prop_name
-      )
+      parse window.getComputedStyle(tween.elem)[prop_name]
 
     init = ( tween ) ->
       tween.start = parsed_tween tween
@@ -372,12 +369,40 @@ export default ({hook, Color}) ->
         when 'right'  then 90
         else # TODO: error
 
+  error = (msg) ->
+    throw new SyntaxError msg
+
   gradient_handler = ({function_name, hook_name, parse_gradient, detect_gradient_type, pre_stops_css}) -> {
     hook_name
     prop_name: 'backgroundImage'
 
     init_tween_end: ({tween, parse}) ->
       {start, end} = tween
+
+      extract_changes = (parsed_end) ->
+        error "Animation end value '#{end}' has #{parsed_end.length} background images, but start value has #{start.length}" unless parsed_end.length is start.length
+
+        _change = []
+        for start_image, image_index in start when not is_string start_image
+          end_image = parsed_end[image_index]
+          error "Expected gradient in animation end value but got '#{end_image}'" if is_string end_image
+          error "Animation end value '#{end}' has #{end_image.stops.length} color stops, but start value has #{start_image.stops.length}" unless end_image.stops.length is start_image.stops.length
+          changed = null
+
+          if start_image.angle? and start_image.angle isnt end_image.angle
+            (changed ?= {}).angle = end_image.angle
+          for start_stop, stop_index in start_image.stops
+            end_stop = end_image.stops[stop_index]
+            changed_stop = null
+            change_stop = (prop_name) ->
+              extend (changed_stop ?= {}),
+                "#{prop_name}": end_stop[prop_name]
+            change_stop 'position' if start_stop.position isnt end_stop.position
+            change_stop 'unit'     if start_stop.unit     isnt end_stop.unit
+            change_stop 'color'    unless Color.eq start_stop.color, end_stop.color
+            ((changed ?= {}).stops ?= [])[stop_index] = changed_stop if changed_stop
+          _change[image_index] = changed if changed
+        _change
 
       looks_like_shorthand = (end) ->
         return yes if ///
@@ -392,7 +417,7 @@ export default ({hook, Color}) ->
           |
           #{index_regex_chunk}
         ///.exec end
-      return parse end unless looks_like_shorthand end # TODO: error if end doesn't match start eg wrong # of background images/stops
+      return extract_changes parse end unless looks_like_shorthand end
 
       changing_vals = do ->
         parsed_pairs         = []
@@ -496,49 +521,48 @@ export default ({hook, Color}) ->
         extended indexed_parsed_pairs,
           all: parsed_pairs
 
-      _change: do ->
-        _change = []
-        for image, image_index in start
-          changing_vals_for_image =
-            changing_vals.all[..]
-            .concat(changing_vals[image_index] ? [])
-          continue if is_string image
-          {stops, angle} = image
-          changed = null
-          for {start: start_change, end: end_change, type} in changing_vals_for_image when type is 'angle'
-            if angle is start_change.angle
-              (changed ?= {}).angle = end_change.angle
-          for stop, stop_index in stops
-            changed_stop = null
-            for {start: start_change, end: end_change, type} in changing_vals_for_image
-              switch type
-                when 'length'
-                  {position, unit} = start_change
-                  continue unless position is stop.position and unit is stop.unit
-                  extend (changed_stop ?= {}),
-                    position: end_change.position
-                    unit:     end_change.unit
-                when 'color'
-                  {color} = start_change
-                  continue unless _eq=Color.eq color, stop.color
-                  color_change = Color.create end_change.color
-                  if use_opacity=_eq?.opacity
-                    color_change = Color.setAlpha color_change, use_opacity
-                  extend (changed_stop ?= {}),
-                    color: color_change
-                when 'full_stop'
-                  {position, unit, color} = start_change
-                  continue unless position is stop.position and unit is stop.unit and _eq=Color.eq color, stop.color
-                  color_change = Color.create end_change.color
-                  if use_opacity=_eq?.opacity
-                    color_change = Color.setAlpha color_change, use_opacity
-                  extend (changed_stop ?= {}),
-                    position: end_change.position
-                    unit:     end_change.unit
-                    color:    color_change
-            ((changed ?= {}).stops ?= [])[stop_index] = changed_stop if changed_stop
-          _change[image_index] = changed if changed
-        _change # TODO: warn/error if no detected changes? warn for each changing_val that wasn't found anywhere?
+      _change = []
+      for image, image_index in start
+        changing_vals_for_image =
+          changing_vals.all[..]
+          .concat(changing_vals[image_index] ? [])
+        continue if is_string image
+        {stops, angle} = image
+        changed = null
+        for {start: start_change, end: end_change, type} in changing_vals_for_image when type is 'angle'
+          if angle is start_change.angle
+            (changed ?= {}).angle = end_change.angle
+        for stop, stop_index in stops
+          changed_stop = null
+          for {start: start_change, end: end_change, type} in changing_vals_for_image
+            switch type
+              when 'length'
+                {position, unit} = start_change
+                continue unless position is stop.position and unit is stop.unit
+                extend (changed_stop ?= {}),
+                  position: end_change.position
+                  unit:     end_change.unit
+              when 'color'
+                {color} = start_change
+                continue unless _eq=Color.eq color, stop.color
+                color_change = Color.create end_change.color
+                if use_opacity=_eq?.opacity
+                  color_change = Color.setAlpha color_change, use_opacity
+                extend (changed_stop ?= {}),
+                  color: color_change
+              when 'full_stop'
+                {position, unit, color} = start_change
+                continue unless position is stop.position and unit is stop.unit and _eq=Color.eq color, stop.color
+                color_change = Color.create end_change.color
+                if use_opacity=_eq?.opacity
+                  color_change = Color.setAlpha color_change, use_opacity
+                extend (changed_stop ?= {}),
+                  position: end_change.position
+                  unit:     end_change.unit
+                  color:    color_change
+          ((changed ?= {}).stops ?= [])[stop_index] = changed_stop if changed_stop
+        _change[image_index] = changed if changed
+      _change # TODO: warn/error if no detected changes? warn for each changing_val that wasn't found anywhere?
 
     parse: (val) ->
       _top_level_args = (val) ->
@@ -632,7 +656,6 @@ export default ({hook, Color}) ->
 
     css_val_from_initialized_tween: ({tween, parsed_tween}) ->
       {pos, start, end} = tween
-      {_change} = end
       current = null
       get_current = ->
         current ?= parsed_tween tween
@@ -640,65 +663,41 @@ export default ({hook, Color}) ->
       (for image, image_index in start then do ->
         return image if is_string image
 
-        if _change
-          end_change = _change[image_index]
-          current_image = get_current()[image_index]
-        end_image = end[image_index]
-
-        _scaled = (prop) ->
-          scaled {
-            start: image
-            end: end_image
-            pos, prop
-          }
+        end_change = end[image_index]
+        current_image = get_current()[image_index]
 
         adjusted_stops =
-          for stop, stop_index in image.stops
+          for stop, stop_index in image.stops then do ->
             {color, unit, position} = stop
 
-            if _change
-              current_stop = current_image.stops[stop_index]
-              if stop_change=end_change?.stops?[stop_index]
-                {
-                  color:
-                    if color_change=stop_change.color
-                      Color.transition {
-                        start: color
-                        end: color_change
-                        pos
-                      }
-                    else
-                      current_stop.color
-                  position:
-                    if position_change=stop_change.position
-                      scaled {
-                        start: position
-                        end: position_change
-                        pos
-                      }
-                    else
-                      current_stop.position
-                  unit
-                }
-              else
-                current_stop
-            else {
+            current_stop = current_image.stops[stop_index]
+            return current_stop unless stop_change=end_change?.stops?[stop_index]
+            {
               color:
-                Color.transition {
-                  start: color
-                  end: end_image.stops[stop_index].color
-                  pos
-                }
+                if color_change=stop_change.color
+                  Color.transition {
+                    start: color
+                    end: color_change
+                    pos
+                  }
+                else
+                  current_stop.color
               position:
-                _scaled ({stops}) -> stops[stop_index].position
+                if position_change=stop_change.position
+                  scaled {
+                    start: position
+                    end: position_change
+                    pos
+                  }
+                else
+                  current_stop.position
               unit
             }
 
         "#{image.function_name ? function_name}(#{
           (image.pre_stops_css ? pre_stops_css) {
             start_gradient: image
-            end_gradient: end_image
-            end_change, _change
+            end_change
             pos
             get_current_image: ->
               (current ?= parsed_tween tween)[image_index]
@@ -741,27 +740,19 @@ export default ({hook, Color}) ->
       stops_str
     }
 
-  pre_stops_css_linear_gradient = ({start_gradient, end_gradient, end_change, _change, pos, get_current_image}) ->
+  pre_stops_css_linear_gradient = ({start_gradient, end_change, pos, get_current_image}) ->
     {angle_unit} = start_gradient
 
     "#{
-      if _change
-        if angle_change=end_change?.angle
-          scaled {
-            start: start_gradient.angle
-            end: angle_change
-            pos
-          }
-        else
-          get_current_image()
-          .angle
-      else
+      if angle_change=end_change?.angle
         scaled {
-          start: start_gradient
-          end: end_gradient
+          start: start_gradient.angle
+          end: angle_change
           pos
-          prop: 'angle'
         }
+      else
+        get_current_image()
+        .angle
     }#{angle_unit}, "
 
   register_animation_handler gradient_handler
@@ -886,7 +877,7 @@ export default ({hook, Color}) ->
       stops_str
     }
 
-  pre_stops_css_radial_gradient = ({start_gradient, end_gradient, end_change, pos}) ->
+  pre_stops_css_radial_gradient = ({start_gradient}) ->
     {shape, extent, position} = start_gradient
 
     # TODO: animate position

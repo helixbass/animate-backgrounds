@@ -85,13 +85,13 @@ Object.defineProperty(exports, "__esModule", {
 });
 
 exports.default = function (arg) {
-  var Color, _int, angle_from_direction, angle_or_direction_regex_chunk, color_regex_chunk, gradient_handler, hook, index_regex_chunk, length_regex_chunk, parse_linear_gradient, parse_radial_gradient, pre_stops_css_linear_gradient, pre_stops_css_radial_gradient, regex_chunk_str, register_animation_handler, scaled, value_regex_chunk;
+  var Color, _int, angle_from_direction, angle_or_direction_regex_chunk, color_regex_chunk, error, gradient_handler, hook, index_regex_chunk, length_regex_chunk, parse_linear_gradient, parse_radial_gradient, pre_stops_css_linear_gradient, pre_stops_css_radial_gradient, regex_chunk_str, register_animation_handler, scaled, value_regex_chunk;
   hook = arg.hook, Color = arg.Color;
   register_animation_handler = function register_animation_handler(arg1) {
     var css_val_from_initialized_tween, hook_name, init, init_tween_end, parse, parsed_tween, prop_name;
     prop_name = arg1.prop_name, hook_name = arg1.hook_name, parse = arg1.parse, init_tween_end = arg1.init_tween_end, css_val_from_initialized_tween = arg1.css_val_from_initialized_tween;
     parsed_tween = function parsed_tween(tween) {
-      return parse(window.getComputedStyle(tween.elem).getPropertyValue(prop_name));
+      return parse(window.getComputedStyle(tween.elem)[prop_name]);
     };
     init = function init(tween) {
       tween.start = parsed_tween(tween);
@@ -397,6 +397,9 @@ exports.default = function (arg) {
       }();
     }
   };
+  error = function error(msg) {
+    throw new SyntaxError(msg);
+  };
   gradient_handler = function gradient_handler(arg1) {
     var detect_gradient_type, function_name, hook_name, parse_gradient, pre_stops_css;
     function_name = arg1.function_name, hook_name = arg1.hook_name, parse_gradient = arg1.parse_gradient, detect_gradient_type = arg1.detect_gradient_type, pre_stops_css = arg1.pre_stops_css;
@@ -404,16 +407,66 @@ exports.default = function (arg) {
       hook_name: hook_name,
       prop_name: 'backgroundImage',
       init_tween_end: function init_tween_end(arg2) {
-        var changing_vals, end, looks_like_shorthand, parse, start, tween;
+        var _change, _eq, angle, base, changed, changed_stop, changing_vals, changing_vals_for_image, color, color_change, end, end_change, extract_changes, image, image_index, j, k, l, len, len1, len2, len3, looks_like_shorthand, m, parse, position, ref, ref1, ref2, start, start_change, stop, stop_index, stops, tween, type, unit, use_opacity;
         tween = arg2.tween, parse = arg2.parse;
         start = tween.start, end = tween.end;
+        extract_changes = function extract_changes(parsed_end) {
+          var _change, base, change_stop, changed, changed_stop, end_image, end_stop, image_index, j, k, len, len1, ref, start_image, start_stop, stop_index;
+          if (parsed_end.length !== start.length) {
+            error("Animation end value '" + end + "' has " + parsed_end.length + " background images, but start value has " + start.length);
+          }
+          _change = [];
+          for (image_index = j = 0, len = start.length; j < len; image_index = ++j) {
+            start_image = start[image_index];
+            if (!!is_string(start_image)) {
+              continue;
+            }
+            end_image = parsed_end[image_index];
+            if (is_string(end_image)) {
+              error("Expected gradient in animation end value but got '" + end_image + "'");
+            }
+            if (end_image.stops.length !== start_image.stops.length) {
+              error("Animation end value '" + end + "' has " + end_image.stops.length + " color stops, but start value has " + start_image.stops.length);
+            }
+            changed = null;
+            if (start_image.angle != null && start_image.angle !== end_image.angle) {
+              (changed != null ? changed : changed = {}).angle = end_image.angle;
+            }
+            ref = start_image.stops;
+            for (stop_index = k = 0, len1 = ref.length; k < len1; stop_index = ++k) {
+              start_stop = ref[stop_index];
+              end_stop = end_image.stops[stop_index];
+              changed_stop = null;
+              change_stop = function change_stop(prop_name) {
+                var obj1;
+                return extend(changed_stop != null ? changed_stop : changed_stop = {}, (obj1 = {}, obj1["" + prop_name] = end_stop[prop_name], obj1));
+              };
+              if (start_stop.position !== end_stop.position) {
+                change_stop('position');
+              }
+              if (start_stop.unit !== end_stop.unit) {
+                change_stop('unit');
+              }
+              if (!Color.eq(start_stop.color, end_stop.color)) {
+                change_stop('color');
+              }
+              if (changed_stop) {
+                ((base = changed != null ? changed : changed = {}).stops != null ? base.stops : base.stops = [])[stop_index] = changed_stop;
+              }
+            }
+            if (changed) {
+              _change[image_index] = changed;
+            }
+          }
+          return _change;
+        };
         looks_like_shorthand = function looks_like_shorthand(end) {
           if (RegExp("\\s*" + value_regex_chunk + "(?:\\s+" + length_regex_chunk + ")?\\s*->|" + index_regex_chunk).exec(end)) {
             return true;
           }
         };
         if (!looks_like_shorthand(end)) {
-          return parse(end);
+          return extract_changes(parse(end));
         }
         changing_vals = function () {
           var all, angle, angle_unit, color, first_direction, index, indexed_parsed_pairs, match, pair, parsed_pairs, position, remaining, second_direction, second_position, second_unit, separator, set_from_match_params, unit;
@@ -477,82 +530,77 @@ exports.default = function (arg) {
             all: parsed_pairs
           });
         }();
-        return {
-          _change: function () {
-            var _change, _eq, angle, base, changed, changed_stop, changing_vals_for_image, color, color_change, end_change, image, image_index, j, k, l, len, len1, len2, len3, m, position, ref, ref1, ref2, start_change, stop, stop_index, stops, type, unit, use_opacity;
-            _change = [];
-            for (image_index = j = 0, len = start.length; j < len; image_index = ++j) {
-              image = start[image_index];
-              changing_vals_for_image = changing_vals.all.slice(0).concat((ref = changing_vals[image_index]) != null ? ref : []);
-              if (is_string(image)) {
-                continue;
-              }
-              stops = image.stops, angle = image.angle;
-              changed = null;
-              for (k = 0, len1 = changing_vals_for_image.length; k < len1; k++) {
-                ref1 = changing_vals_for_image[k], start_change = ref1.start, end_change = ref1.end, type = ref1.type;
-                if (type === 'angle') {
-                  if (angle === start_change.angle) {
-                    (changed != null ? changed : changed = {}).angle = end_change.angle;
-                  }
-                }
-              }
-              for (stop_index = l = 0, len2 = stops.length; l < len2; stop_index = ++l) {
-                stop = stops[stop_index];
-                changed_stop = null;
-                for (m = 0, len3 = changing_vals_for_image.length; m < len3; m++) {
-                  ref2 = changing_vals_for_image[m], start_change = ref2.start, end_change = ref2.end, type = ref2.type;
-                  switch (type) {
-                    case 'length':
-                      position = start_change.position, unit = start_change.unit;
-                      if (!(position === stop.position && unit === stop.unit)) {
-                        continue;
-                      }
-                      extend(changed_stop != null ? changed_stop : changed_stop = {}, {
-                        position: end_change.position,
-                        unit: end_change.unit
-                      });
-                      break;
-                    case 'color':
-                      color = start_change.color;
-                      if (!(_eq = Color.eq(color, stop.color))) {
-                        continue;
-                      }
-                      color_change = Color.create(end_change.color);
-                      if (use_opacity = _eq != null ? _eq.opacity : void 0) {
-                        color_change = Color.setAlpha(color_change, use_opacity);
-                      }
-                      extend(changed_stop != null ? changed_stop : changed_stop = {}, {
-                        color: color_change
-                      });
-                      break;
-                    case 'full_stop':
-                      position = start_change.position, unit = start_change.unit, color = start_change.color;
-                      if (!(position === stop.position && unit === stop.unit && (_eq = Color.eq(color, stop.color)))) {
-                        continue;
-                      }
-                      color_change = Color.create(end_change.color);
-                      if (use_opacity = _eq != null ? _eq.opacity : void 0) {
-                        color_change = Color.setAlpha(color_change, use_opacity);
-                      }
-                      extend(changed_stop != null ? changed_stop : changed_stop = {}, {
-                        position: end_change.position,
-                        unit: end_change.unit,
-                        color: color_change
-                      });
-                  }
-                }
-                if (changed_stop) {
-                  ((base = changed != null ? changed : changed = {}).stops != null ? base.stops : base.stops = [])[stop_index] = changed_stop;
-                }
-              }
-              if (changed) {
-                _change[image_index] = changed;
+        _change = [];
+        for (image_index = j = 0, len = start.length; j < len; image_index = ++j) {
+          image = start[image_index];
+          changing_vals_for_image = changing_vals.all.slice(0).concat((ref = changing_vals[image_index]) != null ? ref : []);
+          if (is_string(image)) {
+            continue;
+          }
+          stops = image.stops, angle = image.angle;
+          changed = null;
+          for (k = 0, len1 = changing_vals_for_image.length; k < len1; k++) {
+            ref1 = changing_vals_for_image[k], start_change = ref1.start, end_change = ref1.end, type = ref1.type;
+            if (type === 'angle') {
+              if (angle === start_change.angle) {
+                (changed != null ? changed : changed = {}).angle = end_change.angle;
               }
             }
-            return _change;
-          }()
-        };
+          }
+          for (stop_index = l = 0, len2 = stops.length; l < len2; stop_index = ++l) {
+            stop = stops[stop_index];
+            changed_stop = null;
+            for (m = 0, len3 = changing_vals_for_image.length; m < len3; m++) {
+              ref2 = changing_vals_for_image[m], start_change = ref2.start, end_change = ref2.end, type = ref2.type;
+              switch (type) {
+                case 'length':
+                  position = start_change.position, unit = start_change.unit;
+                  if (!(position === stop.position && unit === stop.unit)) {
+                    continue;
+                  }
+                  extend(changed_stop != null ? changed_stop : changed_stop = {}, {
+                    position: end_change.position,
+                    unit: end_change.unit
+                  });
+                  break;
+                case 'color':
+                  color = start_change.color;
+                  if (!(_eq = Color.eq(color, stop.color))) {
+                    continue;
+                  }
+                  color_change = Color.create(end_change.color);
+                  if (use_opacity = _eq != null ? _eq.opacity : void 0) {
+                    color_change = Color.setAlpha(color_change, use_opacity);
+                  }
+                  extend(changed_stop != null ? changed_stop : changed_stop = {}, {
+                    color: color_change
+                  });
+                  break;
+                case 'full_stop':
+                  position = start_change.position, unit = start_change.unit, color = start_change.color;
+                  if (!(position === stop.position && unit === stop.unit && (_eq = Color.eq(color, stop.color)))) {
+                    continue;
+                  }
+                  color_change = Color.create(end_change.color);
+                  if (use_opacity = _eq != null ? _eq.opacity : void 0) {
+                    color_change = Color.setAlpha(color_change, use_opacity);
+                  }
+                  extend(changed_stop != null ? changed_stop : changed_stop = {}, {
+                    position: end_change.position,
+                    unit: end_change.unit,
+                    color: color_change
+                  });
+              }
+            }
+            if (changed_stop) {
+              ((base = changed != null ? changed : changed = {}).stops != null ? base.stops : base.stops = [])[stop_index] = changed_stop;
+            }
+          }
+          if (changed) {
+            _change[image_index] = changed;
+          }
+        }
+        return _change;
       },
       parse: function parse(val) {
         var _top_level_args, image, j, len, ref, results;
@@ -677,10 +725,9 @@ exports.default = function (arg) {
         return results;
       },
       css_val_from_initialized_tween: function css_val_from_initialized_tween(arg2) {
-        var _change, current, end, get_current, image, image_index, parsed_tween, pos, start, tween;
+        var current, end, get_current, image, image_index, parsed_tween, pos, start, tween;
         tween = arg2.tween, parsed_tween = arg2.parsed_tween;
         pos = tween.pos, start = tween.start, end = tween.end;
-        _change = end._change;
         current = null;
         get_current = function get_current() {
           return current != null ? current : current = parsed_tween(tween);
@@ -691,72 +738,45 @@ exports.default = function (arg) {
           for (image_index = j = 0, len = start.length; j < len; image_index = ++j) {
             image = start[image_index];
             results.push(function () {
-              var _scaled, adjusted_stops, color, color_change, current_image, current_stop, end_change, end_image, position, position_change, ref, ref1, stop, stop_change, stop_index, unit;
+              var adjusted_stops, color, current_image, end_change, position, ref, ref1, stop, stop_index, unit;
               if (is_string(image)) {
                 return image;
               }
-              if (_change) {
-                end_change = _change[image_index];
-                current_image = get_current()[image_index];
-              }
-              end_image = end[image_index];
-              _scaled = function _scaled(prop) {
-                return scaled({
-                  start: image,
-                  end: end_image,
-                  pos: pos,
-                  prop: prop
-                });
-              };
+              end_change = end[image_index];
+              current_image = get_current()[image_index];
               adjusted_stops = function () {
-                var k, len1, ref, ref1, results1;
+                var k, len1, ref, results1;
                 ref = image.stops;
                 results1 = [];
                 for (stop_index = k = 0, len1 = ref.length; k < len1; stop_index = ++k) {
                   stop = ref[stop_index];
-                  color = stop.color, unit = stop.unit, position = stop.position;
-                  if (_change) {
+                  results1.push(function () {
+                    var color, color_change, current_stop, position, position_change, ref1, stop_change, unit;
+                    color = stop.color, unit = stop.unit, position = stop.position;
                     current_stop = current_image.stops[stop_index];
-                    if (stop_change = end_change != null ? (ref1 = end_change.stops) != null ? ref1[stop_index] : void 0 : void 0) {
-                      results1.push({
-                        color: (color_change = stop_change.color) ? Color.transition({
-                          start: color,
-                          end: color_change,
-                          pos: pos
-                        }) : current_stop.color,
-                        position: (position_change = stop_change.position) ? scaled({
-                          start: position,
-                          end: position_change,
-                          pos: pos
-                        }) : current_stop.position,
-                        unit: unit
-                      });
-                    } else {
-                      results1.push(current_stop);
+                    if (!(stop_change = end_change != null ? (ref1 = end_change.stops) != null ? ref1[stop_index] : void 0 : void 0)) {
+                      return current_stop;
                     }
-                  } else {
-                    results1.push({
-                      color: Color.transition({
+                    return {
+                      color: (color_change = stop_change.color) ? Color.transition({
                         start: color,
-                        end: end_image.stops[stop_index].color,
+                        end: color_change,
                         pos: pos
-                      }),
-                      position: _scaled(function (arg3) {
-                        var stops;
-                        stops = arg3.stops;
-                        return stops[stop_index].position;
-                      }),
+                      }) : current_stop.color,
+                      position: (position_change = stop_change.position) ? scaled({
+                        start: position,
+                        end: position_change,
+                        pos: pos
+                      }) : current_stop.position,
                       unit: unit
-                    });
-                  }
+                    };
+                  }());
                 }
                 return results1;
               }();
               return ((ref = image.function_name) != null ? ref : function_name) + "(" + ((ref1 = image.pre_stops_css) != null ? ref1 : pre_stops_css)({
                 start_gradient: image,
-                end_gradient: end_image,
                 end_change: end_change,
-                _change: _change,
                 pos: pos,
                 get_current_image: function get_current_image() {
                   return (current != null ? current : current = parsed_tween(tween))[image_index];
@@ -798,19 +818,14 @@ exports.default = function (arg) {
     };
   };
   pre_stops_css_linear_gradient = function pre_stops_css_linear_gradient(arg1) {
-    var _change, angle_change, angle_unit, end_change, end_gradient, get_current_image, pos, start_gradient;
-    start_gradient = arg1.start_gradient, end_gradient = arg1.end_gradient, end_change = arg1.end_change, _change = arg1._change, pos = arg1.pos, get_current_image = arg1.get_current_image;
+    var angle_change, angle_unit, end_change, get_current_image, pos, start_gradient;
+    start_gradient = arg1.start_gradient, end_change = arg1.end_change, pos = arg1.pos, get_current_image = arg1.get_current_image;
     angle_unit = start_gradient.angle_unit;
-    return "" + (_change ? (angle_change = end_change != null ? end_change.angle : void 0) ? scaled({
+    return "" + ((angle_change = end_change != null ? end_change.angle : void 0) ? scaled({
       start: start_gradient.angle,
       end: angle_change,
       pos: pos
-    }) : get_current_image().angle : scaled({
-      start: start_gradient,
-      end: end_gradient,
-      pos: pos,
-      prop: 'angle'
-    })) + angle_unit + ", ";
+    }) : get_current_image().angle) + angle_unit + ", ";
   };
   register_animation_handler(gradient_handler({
     hook_name: 'linearGradient',
@@ -893,8 +908,8 @@ exports.default = function (arg) {
     };
   };
   pre_stops_css_radial_gradient = function pre_stops_css_radial_gradient(arg1) {
-    var end_change, end_gradient, extent, pos, position, shape, start_gradient;
-    start_gradient = arg1.start_gradient, end_gradient = arg1.end_gradient, end_change = arg1.end_change, pos = arg1.pos;
+    var extent, position, shape, start_gradient;
+    start_gradient = arg1.start_gradient;
     shape = start_gradient.shape, extent = start_gradient.extent, position = start_gradient.position;
     return "" + shape + (extent ? " " + extent : '') + " at " + position[0].position + position[0].unit + " " + position[1].position + position[1].unit + ", ";
   };
