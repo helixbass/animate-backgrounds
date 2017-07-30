@@ -91,7 +91,7 @@ exports.default = function (arg) {
     var css_val_from_initialized_tween, hook_name, init, init_tween_end, parse, parsed_tween, prop_name;
     prop_name = arg1.prop_name, hook_name = arg1.hook_name, parse = arg1.parse, init_tween_end = arg1.init_tween_end, css_val_from_initialized_tween = arg1.css_val_from_initialized_tween;
     parsed_tween = function parsed_tween(tween) {
-      return parse($(tween.elem).css(prop_name));
+      return parse(window.getComputedStyle(tween.elem).getPropertyValue(prop_name));
     };
     init = function init(tween) {
       tween.start = parsed_tween(tween);
@@ -940,7 +940,7 @@ var extend,
     slice = [].slice;
 
 is_string = function is_string(obj) {
-  return 'string' === $.type(obj);
+  return Object.prototype.toString.call(obj) === '[object String]';
 };
 
 map = function map(arr, clb) {

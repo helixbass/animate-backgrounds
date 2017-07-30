@@ -1,5 +1,5 @@
 is_string = (obj) ->
-  'string' is $.type obj
+  Object::toString.call(obj) is '[object String]'
 
 # background-position logic and general approach from Extending jQuery
 
@@ -21,7 +21,10 @@ export default ({hook, Color}) ->
     css_val_from_initialized_tween
   }) ->
     parsed_tween = (tween) ->
-      parse $(tween.elem).css prop_name
+      parse(
+        window.getComputedStyle tween.elem
+        .getPropertyValue prop_name
+      )
 
     init = ( tween ) ->
       tween.start = parsed_tween tween
