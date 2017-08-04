@@ -648,17 +648,17 @@ exports.default = function (arg) {
                     if (position == null) {
                       position = function () {
                         switch (stop_index) {
-                          case 0:
-                            return 0;
                           case split_stops.length - 1:
                             return 100;
+                          default:
+                            return 0;
                         }
                       }();
                       unit = '%';
                     }
                     results1.push({
                       color: Color.create(color),
-                      position: position != null ? _int(position) : void 0,
+                      position: position != null ? parseFloat(position) : void 0,
                       unit: unit != null ? unit : 'px'
                     });
                   }

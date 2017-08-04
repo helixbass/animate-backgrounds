@@ -612,16 +612,18 @@ export default ({hook, Color}) ->
                 unless position?
                   position =
                     switch stop_index
-                      when 0
-                        0
+                      # when 0
+                      #   0
                       when split_stops.length - 1
                         100
+                      else
+                        0
                   unit = '%'
 
                 color:
                   Color.create color
                 position:
-                  _int position if position?
+                  parseFloat position if position?
                 unit:
                   unit ? 'px'
 
