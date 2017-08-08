@@ -391,6 +391,11 @@ export default ({hook, Color}) ->
 
           if start_image.angle? and start_image.angle isnt end_image.angle
             (changed ?= {}).angle = end_image.angle
+          if start_image.position?
+            for start_pos, i in start_image.position
+              end_pos = end_image.position[i]
+              continue unless start_pos.position isnt end_pos.position
+              ((changed ?= {}).position ?= [])[i] = end_pos
           for start_stop, stop_index in start_image.stops
             end_stop = end_image.stops[stop_index]
             changed_stop = null

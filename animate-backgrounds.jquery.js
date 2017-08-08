@@ -411,7 +411,7 @@ exports.default = function (arg) {
         tween = arg2.tween, parse = arg2.parse;
         start = tween.start, end = tween.end;
         extract_changes = function extract_changes(parsed_end) {
-          var _change, base, change_stop, changed, changed_stop, end_image, end_stop, image_index, j, k, len, len1, ref, start_image, start_stop, stop_index;
+          var _change, base, base1, change_stop, changed, changed_stop, end_image, end_pos, end_stop, i, image_index, j, k, l, len, len1, len2, ref, ref1, start_image, start_pos, start_stop, stop_index;
           if (parsed_end.length !== start.length) {
             error("Animation end value '" + end + "' has " + parsed_end.length + " background images, but start value has " + start.length);
           }
@@ -432,9 +432,20 @@ exports.default = function (arg) {
             if (start_image.angle != null && start_image.angle !== end_image.angle) {
               (changed != null ? changed : changed = {}).angle = end_image.angle;
             }
-            ref = start_image.stops;
-            for (stop_index = k = 0, len1 = ref.length; k < len1; stop_index = ++k) {
-              start_stop = ref[stop_index];
+            if (start_image.position != null) {
+              ref = start_image.position;
+              for (i = k = 0, len1 = ref.length; k < len1; i = ++k) {
+                start_pos = ref[i];
+                end_pos = end_image.position[i];
+                if (start_pos.position === end_pos.position) {
+                  continue;
+                }
+                ((base = changed != null ? changed : changed = {}).position != null ? base.position : base.position = [])[i] = end_pos;
+              }
+            }
+            ref1 = start_image.stops;
+            for (stop_index = l = 0, len2 = ref1.length; l < len2; stop_index = ++l) {
+              start_stop = ref1[stop_index];
               end_stop = end_image.stops[stop_index];
               changed_stop = null;
               change_stop = function change_stop(prop_name) {
@@ -451,7 +462,7 @@ exports.default = function (arg) {
                 change_stop('color');
               }
               if (changed_stop) {
-                ((base = changed != null ? changed : changed = {}).stops != null ? base.stops : base.stops = [])[stop_index] = changed_stop;
+                ((base1 = changed != null ? changed : changed = {}).stops != null ? base1.stops : base1.stops = [])[stop_index] = changed_stop;
               }
             }
             if (changed) {
