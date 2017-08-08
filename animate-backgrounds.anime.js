@@ -901,11 +901,11 @@ exports.default = function (arg) {
             return [from_keyword('center'), from_keyword('center')];
           }
           first = keyword1 ? (first_is_second = keyword1 === 'top' || keyword1 === 'bottom', from_keyword(keyword1)) : {
-            position: position1,
+            position: parseFloat(position1),
             unit: unit1
           };
           second = keyword2 != null || position2 != null ? keyword2 ? from_keyword(keyword2) : {
-            position: position2,
+            position: parseFloat(position2),
             unit: unit2
           } : from_keyword('center');
           if (first_is_second) {

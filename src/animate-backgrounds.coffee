@@ -867,13 +867,13 @@ export default ({hook, Color}) ->
               first_is_second = keyword1 in ['top', 'bottom']
               from_keyword keyword1
             else
-              position: position1, unit: unit1
+              position: parseFloat(position1), unit: unit1
           second =
             if keyword2? or position2?
               if keyword2
                 from_keyword keyword2
               else
-                position: position2, unit: unit2
+                position: parseFloat(position2), unit: unit2
             else
               from_keyword 'center'
 
