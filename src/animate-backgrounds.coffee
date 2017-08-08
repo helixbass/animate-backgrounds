@@ -665,13 +665,16 @@ export default ({hook, Color}) ->
       {pos, start, end} = tween
       current = null
       get_current = ->
-        current ?= parsed_tween tween
+        # current ?= parsed_tween tween
+        current ?= start
 
       (for image, image_index in start then do ->
         return image if is_string image
 
         end_change = end[image_index]
-        current_image = get_current()[image_index]
+        get_current_image = ->
+          get_current()[image_index]
+        current_image = do get_current_image
 
         adjusted_stops =
           for stop, stop_index in image.stops then do ->
@@ -706,8 +709,7 @@ export default ({hook, Color}) ->
             start_gradient: image
             end_change
             pos
-            get_current_image: ->
-              (current ?= parsed_tween tween)[image_index]
+            get_current_image
           }
         }#{
           ("#{color} #{position}#{unit}" for {color, position, unit} in adjusted_stops)

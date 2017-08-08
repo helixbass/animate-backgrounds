@@ -741,7 +741,7 @@ exports.default = function (arg) {
         pos = tween.pos, start = tween.start, end = tween.end;
         current = null;
         get_current = function get_current() {
-          return current != null ? current : current = parsed_tween(tween);
+          return current != null ? current : current = start;
         };
         return function () {
           var j, len, results;
@@ -749,12 +749,15 @@ exports.default = function (arg) {
           for (image_index = j = 0, len = start.length; j < len; image_index = ++j) {
             image = start[image_index];
             results.push(function () {
-              var adjusted_stops, color, current_image, end_change, position, ref, ref1, stop, stop_index, unit;
+              var adjusted_stops, color, current_image, end_change, get_current_image, position, ref, ref1, stop, stop_index, unit;
               if (is_string(image)) {
                 return image;
               }
               end_change = end[image_index];
-              current_image = get_current()[image_index];
+              get_current_image = function get_current_image() {
+                return get_current()[image_index];
+              };
+              current_image = get_current_image();
               adjusted_stops = function () {
                 var k, len1, ref, results1;
                 ref = image.stops;
@@ -789,9 +792,7 @@ exports.default = function (arg) {
                 start_gradient: image,
                 end_change: end_change,
                 pos: pos,
-                get_current_image: function get_current_image() {
-                  return (current != null ? current : current = parsed_tween(tween))[image_index];
-                }
+                get_current_image: get_current_image
               }) + function () {
                 var k, len1, ref2, results1;
                 results1 = [];
