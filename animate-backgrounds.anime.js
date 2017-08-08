@@ -919,10 +919,29 @@ exports.default = function (arg) {
     };
   };
   pre_stops_css_radial_gradient = function pre_stops_css_radial_gradient(arg1) {
-    var extent, position, shape, start_gradient;
-    start_gradient = arg1.start_gradient;
+    var angle_change, angle_unit, current_pos, end_change, extent, get_current_image, pos, pos_index, position, position_change, ref, shape, start_gradient;
+    start_gradient = arg1.start_gradient, end_change = arg1.end_change, pos = arg1.pos, get_current_image = arg1.get_current_image;
+    angle_unit = start_gradient.angle_unit;
+    "" + ((angle_change = end_change != null ? end_change.angle : void 0) ? scaled({
+      start: start_gradient.angle,
+      end: angle_change,
+      pos: pos
+    }) : get_current_image().angle) + angle_unit + ", ";
     shape = start_gradient.shape, extent = start_gradient.extent, position = start_gradient.position;
-    return "" + shape + (extent ? " " + extent : '') + " at " + position[0].position + position[0].unit + " " + position[1].position + position[1].unit + ", ";
+    return "" + shape + (extent ? " " + extent : '') + " at " + ((position_change = end_change != null ? end_change.position : void 0) ? function () {
+      var j, len, ref, results;
+      ref = [0, 1];
+      results = [];
+      for (j = 0, len = ref.length; j < len; j++) {
+        pos_index = ref[j];
+        results.push("" + (position_change[pos_index] ? scaled({
+          start: position[pos_index].position,
+          end: position_change[pos_index].position,
+          pos: pos
+        }) : get_current_image().position[pos_index].position) + position[pos_index].unit);
+      }
+      return results;
+    }().join(' ') : ((ref = get_current_image(), current_pos = ref.position, ref), "" + current_pos[0].position + current_pos[0].unit + " " + current_pos[1].position + current_pos[1].unit)) + ", ";
   };
   register_animation_handler(gradient_handler({
     hook_name: 'radialGradient',

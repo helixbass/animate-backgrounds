@@ -884,15 +884,46 @@ export default ({hook, Color}) ->
       stops_str
     }
 
-  pre_stops_css_radial_gradient = ({start_gradient}) ->
+  pre_stops_css_radial_gradient = ({start_gradient, end_change, pos, get_current_image}) ->
+    {angle_unit} = start_gradient
+
+    "#{
+      if angle_change=end_change?.angle
+        scaled {
+          start: start_gradient.angle
+          end: angle_change
+          pos
+        }
+      else
+        get_current_image()
+        .angle
+    }#{angle_unit}, "
     {shape, extent, position} = start_gradient
 
-    # TODO: animate position
     "#{shape}#{
       if extent
         " #{extent}"
       else ''
-    } at #{position[0].position}#{position[0].unit} #{position[1].position}#{position[1].unit}, "
+    } at #{
+      if position_change=end_change?.position
+        (for pos_index in [0, 1]
+          "#{
+            if position_change[pos_index]
+              scaled {
+                start: position[pos_index].position
+                end: position_change[pos_index].position
+                pos
+              }
+            else
+              get_current_image()
+              .position[pos_index]
+              .position
+          }#{ position[pos_index].unit }"
+        ).join ' '
+      else
+        {position: current_pos} = get_current_image()
+        "#{current_pos[0].position}#{current_pos[0].unit} #{current_pos[1].position}#{current_pos[1].unit}"
+    }, "
 
   register_animation_handler gradient_handler
     hook_name: 'radialGradient'
