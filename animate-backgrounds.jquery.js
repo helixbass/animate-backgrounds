@@ -407,9 +407,14 @@ exports.default = function (arg) {
       hook_name: hook_name,
       prop_name: 'backgroundImage',
       init_tween_end: function init_tween_end(arg2) {
-        var _change, _eq, angle, base, changed, changed_stop, changing_vals, changing_vals_for_image, color, color_change, end, end_change, extract_changes, image, image_index, j, k, l, len, len1, len2, len3, looks_like_shorthand, m, parse, position, ref, ref1, ref2, start, start_change, stop, stop_index, stops, tween, type, unit, use_opacity;
+        var _change, _eq, all, angle, base, changed, changed_stop, changing_vals, changing_vals_for_image, color, color_change, end, end_change, extract_changes, image, image_index, j, k, l, len, len1, len2, len3, looks_like_shorthand, m, match, parse, position, ref, ref1, ref2, start, start_change, stop, stop_index, stops, tween, type, unit, use_opacity;
         tween = arg2.tween, parse = arg2.parse;
         start = tween.start, end = tween.end;
+        if (match = /^simultaneous\s*/.exec(end)) {
+          all = match[0];
+          start.simultaneous = true;
+          end = end.slice(all.length);
+        }
         extract_changes = function extract_changes(parsed_end) {
           var _change, base, base1, change_stop, changed, changed_stop, end_image, end_pos, end_stop, i, image_index, j, k, l, len, len1, len2, ref, ref1, start_image, start_pos, start_stop, stop_index;
           if (parsed_end.length !== start.length) {
@@ -480,7 +485,7 @@ exports.default = function (arg) {
           return extract_changes(parse(end));
         }
         changing_vals = function () {
-          var all, angle, angle_unit, color, first_direction, index, indexed_parsed_pairs, match, pair, parsed_pairs, position, remaining, second_direction, second_position, second_unit, separator, set_from_match_params, unit;
+          var angle, angle_unit, color, first_direction, index, indexed_parsed_pairs, pair, parsed_pairs, position, remaining, second_direction, second_position, second_unit, separator, set_from_match_params, unit;
           parsed_pairs = [];
           indexed_parsed_pairs = {};
           separator = null;
@@ -741,7 +746,9 @@ exports.default = function (arg) {
         pos = tween.pos, start = tween.start, end = tween.end;
         current = null;
         get_current = function get_current() {
-          return current != null ? current : current = start;
+          var simultaneous;
+          simultaneous = start.simultaneous;
+          return current != null ? current : current = simultaneous ? parsed_tween(tween) : start;
         };
         return function () {
           var j, len, results;

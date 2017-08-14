@@ -379,6 +379,14 @@ export default ({hook, Color}) ->
     init_tween_end: ({tween, parse}) ->
       {start, end} = tween
 
+      if match=///
+        ^
+        simultaneous
+        \s *
+      ///.exec end
+        [all] = match
+        start.simultaneous = yes
+        end = end[all.length..]
       extract_changes = (parsed_end) ->
         error "Animation end value '#{end}' has #{parsed_end.length} background images, but start value has #{start.length}" unless parsed_end.length is start.length
 
@@ -665,8 +673,12 @@ export default ({hook, Color}) ->
       {pos, start, end} = tween
       current = null
       get_current = ->
-        # current ?= parsed_tween tween
-        current ?= start
+        {simultaneous} = start
+        current ?=
+          if simultaneous
+            parsed_tween tween
+          else
+            start
 
       (for image, image_index in start then do ->
         return image if is_string image
