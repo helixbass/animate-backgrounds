@@ -337,7 +337,7 @@ exports.default = function (arg) {
     ref = /^\/(.*)\/[^\/]*$/.exec(regex.toString()), all = ref[0], chunk = ref[1];
     return chunk;
   };
-  length_regex_chunk = regex_chunk_str(/(?:([+-]?\d+(?:\.\d*)?)(%|\w+))/);
+  length_regex_chunk = regex_chunk_str(/(?:([+-]?\d+(?:\.\d*)?)(%|\w+)?)/);
   color_regex_chunk = regex_chunk_str(/((?:rgba?\([^)]*\))|(?:hsla?\([^)]*\))|(?:\#[0-9A-Fa-f]+)|\w+)/);
   scaled = function scaled(arg1) {
     var end, pos, prop, start, val;

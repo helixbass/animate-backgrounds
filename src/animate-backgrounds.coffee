@@ -267,7 +267,7 @@ export default ({hook, Color}) ->
         %
         |
         \w +
-      )
+      ) ?
     )
   ///
 
