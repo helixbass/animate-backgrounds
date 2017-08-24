@@ -85,7 +85,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 
 exports.default = function (arg) {
-  var Color, _int, angle_from_direction, angle_or_direction_regex_chunk, color_regex_chunk, error, gradient_handler, hook, index_regex_chunk, length_regex_chunk, parse_linear_gradient, parse_radial_gradient, pre_stops_css_linear_gradient, pre_stops_css_radial_gradient, regex_chunk_str, register_animation_handler, scaled, value_regex_chunk;
+  var Color, angle_from_direction, angle_or_direction_regex_chunk, color_regex_chunk, error, gradient_handler, hook, index_regex_chunk, length_regex_chunk, parse_linear_gradient, parse_radial_gradient, pre_stops_css_linear_gradient, pre_stops_css_radial_gradient, regex_chunk_str, register_animation_handler, scaled, value_regex_chunk;
   hook = arg.hook, Color = arg.Color;
   register_animation_handler = function register_animation_handler(arg1) {
     var css_val_from_initialized_tween, hook_name, init, init_tween_end, parse, parsed_tween, prop_name;
@@ -329,9 +329,6 @@ exports.default = function (arg) {
       }().join(', ');
     }
   });
-  _int = function _int(str) {
-    return parseInt(str, 10);
-  };
   regex_chunk_str = function regex_chunk_str(regex) {
     var all, chunk, ref;
     ref = /^\/(.*)\/[^\/]*$/.exec(regex.toString()), all = ref[0], chunk = ref[1];
@@ -363,7 +360,7 @@ exports.default = function (arg) {
     var angle, first_direction, second_direction;
     angle = arg1.angle, first_direction = arg1.first_direction, second_direction = arg1.second_direction;
     if (angle) {
-      return _int(angle);
+      return parseFloat(angle);
     }
     if (second_direction) {
       if ('top' === first_direction || 'top' === second_direction) {
@@ -522,7 +519,7 @@ exports.default = function (arg) {
                 angle_unit: angle_unit
               } : {
                 unit: unit,
-                position: _int(position)
+                position: parseFloat(position)
               };
               if (second_position) {
                 if (start_or_end === 'start') {
@@ -530,7 +527,7 @@ exports.default = function (arg) {
                 }
                 return extend(pair[start_or_end], {
                   unit: second_unit,
-                  position: _int(second_position)
+                  position: parseFloat(second_position)
                 });
               }
             };

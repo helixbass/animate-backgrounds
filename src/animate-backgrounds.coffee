@@ -238,9 +238,6 @@ export default ({hook, Color}) ->
       )
       .join ', '
 
-  _int = (str) ->
-    parseInt str, 10
-
   regex_chunk_str = (regex) ->
     [all, chunk] =
       ///
@@ -347,7 +344,7 @@ export default ({hook, Color}) ->
   ///
 
   angle_from_direction = ({angle, first_direction, second_direction}) ->
-    return _int angle if angle
+    return parseFloat angle if angle
     if second_direction
       # TODO: error if first_direction same as second_direction or eg top bottom
       if 'top' in [first_direction, second_direction]
@@ -494,12 +491,12 @@ export default ({hook, Color}) ->
                   angle_unit
                 }
               else
-                {unit, position: _int position}
+                {unit, position: parseFloat position}
             if second_position
               pair.type = 'full_stop' if start_or_end is 'start' # TODO: error if only start or end is a full stop?
               extend pair[start_or_end],
                 unit: second_unit
-                position: _int second_position
+                position: parseFloat second_position
           set_from_match_params 'start'
 
           remaining = remaining[all.length..]
