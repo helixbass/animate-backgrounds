@@ -33,10 +33,10 @@ module.exports = {
       amd: 'jquery',
       root: 'jQuery',
     },
-    animejs: {
-      commonjs: 'animejs',
-      commonjs2: 'animejs',
-      amd: 'animejs',
+    'animejs-hooks': {
+      commonjs: 'animejs-hooks',
+      commonjs2: 'animejs-hooks',
+      amd: 'animejs-hooks',
       root: 'anime',
     },
     // tinycolor2: {

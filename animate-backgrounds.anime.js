@@ -1,10 +1,10 @@
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory(require("animejs"));
+		module.exports = factory(require("animejs-hooks"));
 	else if(typeof define === 'function' && define.amd)
-		define(["animejs"], factory);
+		define(["animejs-hooks"], factory);
 	else {
-		var a = typeof exports === 'object' ? factory(require("animejs")) : factory(root["anime"]);
+		var a = typeof exports === 'object' ? factory(require("animejs-hooks")) : factory(root["anime"]);
 		for(var i in a) (typeof exports === 'object' ? exports : root)[i] = a[i];
 	}
 })(this, function(__WEBPACK_EXTERNAL_MODULE_4__) {
@@ -1033,9 +1033,9 @@ extended = function extended() {
 "use strict";
 
 
-var _animejs = __webpack_require__(4);
+var _animejsHooks = __webpack_require__(4);
 
-var _animejs2 = _interopRequireDefault(_animejs);
+var _animejsHooks2 = _interopRequireDefault(_animejsHooks);
 
 var _animateBackgrounds = __webpack_require__(0);
 
@@ -1067,7 +1067,7 @@ equals = _tinycolor2.default.equals, mix = _tinycolor2.default.mix;
   hook: function hook(arg) {
     var css_val_from_initialized_tween, hook_name, init_tween_end, _parse, parsed_tween, prop_name;
     hook_name = arg.hook_name, prop_name = arg.prop_name, css_val_from_initialized_tween = arg.css_val_from_initialized_tween, parsed_tween = arg.parsed_tween, _parse = arg.parse, init_tween_end = arg.init_tween_end;
-    return _animejs2.default.cssHooks[hook_name != null ? hook_name : prop_name] = {
+    return _animejsHooks2.default.cssHooks[hook_name != null ? hook_name : prop_name] = {
       get: function get(arg1) {
         var eased, el, from, to;
         to = arg1.to, from = arg1.from, eased = arg1.eased, el = arg1.el;

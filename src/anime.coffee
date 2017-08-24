@@ -1,4 +1,4 @@
-import anime from 'animejs'
+import anime from 'animejs-hooks'
 import animation_hook from './animate-backgrounds'
 import tinycolor from 'tinycolor2'
 {equals, mix} = tinycolor
