@@ -12,6 +12,7 @@ Check out the [interactive tool][tool] for animating and customizing gradient pa
 
 - Animation engine: hooks into either jQuery or a hook-enabled [version][animejs_hooks] of AnimeJS
 - the AnimeJS version depends on (and includes) [`tinycolor2`](https://github.com/bgrins/TinyColor)
+- the jQuery version depends on (you must include) [`jquery-color`](https://github.com/jquery/jquery-color)
 
 ## Installation
 
@@ -21,13 +22,16 @@ You can use `npm` or a `<script>` tag to include the animation handlers for eith
 
 ##### `<script>` tag
 
-Include the following `<script>` tag *after* jQuery:
+Include the following `<script>` tag *after* jQuery and jQuery Color:
 `<script src='https://unpkg.com/animate-backgrounds/animate-backgrounds.jquery.js'></script>`
 
 ##### using `npm`
 
-Install `animate-backgrounds` package:
-`npm install animate-backgrounds`
+Install `jquery`, `jquery-color`, and `animate-backgrounds` packages:
+`npm install --save jquery github:jquery/jquery-color animate-backgrounds`
+> The latest npm-released version of `jquery-color` doesn't
+> [seem](https://github.com/jquery/jquery-color/issues/84) to work correctly
+> so I recommend installing `jquery-color` from Github as above
 
 Then load in your code via `require()` or `import`:
 `require('animate-backgrounds/animate-backgrounds.jquery')`
@@ -44,8 +48,8 @@ Include the following `<script>` tags for the hook-enabled version of AnimeJS an
 
 ##### using `npm`
 
-Install `animate-backgrounds` package:
-`npm install animate-backgrounds`
+Install `animejs-hooks` (hook-enabled version of `animejs`) and `animate-backgrounds` packages:
+`npm install animejs-hooks animate-backgrounds`
 
 Then load in your code via `require()` or `import`:
 `require('animate-backgrounds/animate-backgrounds.anime')`
