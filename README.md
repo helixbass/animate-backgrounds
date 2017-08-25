@@ -23,7 +23,7 @@ You can use `npm` or a `<script>` tag to include the animation handlers for eith
 ##### `<script>` tag
 
 Include the following `<script>` tag *after* jQuery and jQuery Color:
-`<script src='https://unpkg.com/animate-backgrounds/animate-backgrounds.jquery.js'></script>`
+```<script src='https://unpkg.com/animate-backgrounds/animate-backgrounds.jquery.js'></script>```
 
 ##### using `npm`
 
