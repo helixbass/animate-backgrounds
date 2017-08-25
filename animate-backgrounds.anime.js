@@ -7,7 +7,7 @@
 		var a = typeof exports === 'object' ? factory(require("animejs-hooks")) : factory(root["anime"]);
 		for(var i in a) (typeof exports === 'object' ? exports : root)[i] = a[i];
 	}
-})(this, function(__WEBPACK_EXTERNAL_MODULE_4__) {
+})(this, function(__WEBPACK_EXTERNAL_MODULE_5__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -70,7 +70,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 3);
+/******/ 	return __webpack_require__(__webpack_require__.s = 4);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -99,10 +99,7 @@ exports.default = function (arg) {
         tween: tween,
         parse: parse
       });
-      tween.set = true;
-      return console.log({
-        tween: tween
-      });
+      return tween.set = true;
     };
     return hook({
       prop_name: prop_name,
@@ -404,7 +401,7 @@ exports.default = function (arg) {
       hook_name: hook_name,
       prop_name: 'backgroundImage',
       init_tween_end: function init_tween_end(arg2) {
-        var _change, _eq, all, angle, base, changed, changed_stop, changing_vals, changing_vals_for_image, color, color_change, end, end_change, extract_changes, image, image_index, j, k, l, len, len1, len2, len3, looks_like_shorthand, m, match, parse, position, ref, ref1, ref2, start, start_change, stop, stop_index, stops, tween, type, unit, use_opacity;
+        var _change, _eq, _position, all, angle, base, base1, changed, changed_stop, changing_vals, changing_vals_for_image, color, color_change, end, end_change, extract_changes, image, image_index, j, k, l, len, len1, len2, len3, len4, len5, looks_like_shorthand, m, match, n, o, parse, pos_index, position, ref, ref1, ref2, ref3, ref4, start, start_change, stop, stop_index, stops, tween, type, unit, use_opacity;
         tween = arg2.tween, parse = arg2.parse;
         start = tween.start, end = tween.end;
         if (match = /^simultaneous\s*/.exec(end)) {
@@ -550,21 +547,39 @@ exports.default = function (arg) {
           if (is_string(image)) {
             continue;
           }
-          stops = image.stops, angle = image.angle;
+          stops = image.stops, angle = image.angle, position = image.position;
           changed = null;
-          for (k = 0, len1 = changing_vals_for_image.length; k < len1; k++) {
-            ref1 = changing_vals_for_image[k], start_change = ref1.start, end_change = ref1.end, type = ref1.type;
-            if (type === 'angle') {
-              if (angle === start_change.angle) {
-                (changed != null ? changed : changed = {}).angle = end_change.angle;
+          if (angle != null) {
+            for (k = 0, len1 = changing_vals_for_image.length; k < len1; k++) {
+              ref1 = changing_vals_for_image[k], start_change = ref1.start, end_change = ref1.end, type = ref1.type;
+              if (type === 'angle') {
+                if (angle === start_change.angle) {
+                  (changed != null ? changed : changed = {}).angle = end_change.angle;
+                }
               }
             }
           }
-          for (stop_index = l = 0, len2 = stops.length; l < len2; stop_index = ++l) {
+          if (position != null) {
+            for (l = 0, len2 = changing_vals_for_image.length; l < len2; l++) {
+              ref2 = changing_vals_for_image[l], start_change = ref2.start, end_change = ref2.end, type = ref2.type;
+              if (type === 'length') {
+                for (pos_index = m = 0, len3 = position.length; m < len3; pos_index = ++m) {
+                  ref3 = position[pos_index], _position = ref3.position, unit = ref3.unit;
+                  if (start_change.position === _position && start_change.unit === unit) {
+                    ((base = changed != null ? changed : changed = {}).position != null ? base.position : base.position = [])[pos_index] = {
+                      position: end_change.position,
+                      unit: end_change.unit
+                    };
+                  }
+                }
+              }
+            }
+          }
+          for (stop_index = n = 0, len4 = stops.length; n < len4; stop_index = ++n) {
             stop = stops[stop_index];
             changed_stop = null;
-            for (m = 0, len3 = changing_vals_for_image.length; m < len3; m++) {
-              ref2 = changing_vals_for_image[m], start_change = ref2.start, end_change = ref2.end, type = ref2.type;
+            for (o = 0, len5 = changing_vals_for_image.length; o < len5; o++) {
+              ref4 = changing_vals_for_image[o], start_change = ref4.start, end_change = ref4.end, type = ref4.type;
               switch (type) {
                 case 'length':
                   position = start_change.position, unit = start_change.unit;
@@ -606,7 +621,7 @@ exports.default = function (arg) {
               }
             }
             if (changed_stop) {
-              ((base = changed != null ? changed : changed = {}).stops != null ? base.stops : base.stops = [])[stop_index] = changed_stop;
+              ((base1 = changed != null ? changed : changed = {}).stops != null ? base1.stops : base1.stops = [])[stop_index] = changed_stop;
             }
           }
           if (changed) {
@@ -1027,13 +1042,14 @@ extended = function extended() {
 /***/ }),
 /* 1 */,
 /* 2 */,
-/* 3 */
+/* 3 */,
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var _animejsHooks = __webpack_require__(4);
+var _animejsHooks = __webpack_require__(5);
 
 var _animejsHooks2 = _interopRequireDefault(_animejsHooks);
 
@@ -1041,7 +1057,7 @@ var _animateBackgrounds = __webpack_require__(0);
 
 var _animateBackgrounds2 = _interopRequireDefault(_animateBackgrounds);
 
-var _tinycolor = __webpack_require__(5);
+var _tinycolor = __webpack_require__(6);
 
 var _tinycolor2 = _interopRequireDefault(_tinycolor);
 
@@ -1102,13 +1118,13 @@ equals = _tinycolor2.default.equals, mix = _tinycolor2.default.mix;
 });
 
 /***/ }),
-/* 4 */
+/* 5 */
 /***/ (function(module, exports) {
 
-module.exports = __WEBPACK_EXTERNAL_MODULE_4__;
+module.exports = __WEBPACK_EXTERNAL_MODULE_5__;
 
 /***/ }),
-/* 5 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_RESULT__;// TinyColor v1.4.1

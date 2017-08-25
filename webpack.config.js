@@ -28,9 +28,9 @@ module.exports = {
       root: 'jQuery',
     },
     'jquery-color': {
-      commonjs: 'jquery',
-      commonjs2: 'jquery',
-      amd: 'jquery',
+      commonjs: 'jquery-color',
+      commonjs2: 'jquery-color',
+      amd: 'jquery-color',
       root: 'jQuery',
     },
     'animejs-hooks': {

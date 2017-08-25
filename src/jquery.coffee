@@ -1,6 +1,6 @@
 import $ from 'jquery'
 import 'jquery-color'
-{Tween, Color} = $
+{Tween, Color, extend} = $
 import animation_hook from './animate-backgrounds'
 
 extend Color.names,

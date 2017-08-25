@@ -30,7 +30,7 @@ export default ({hook, Color}) ->
 
       tween.set = yes
 
-      console.log {tween}
+      # console.log {tween}
 
     hook {
       prop_name, hook_name
@@ -537,11 +537,18 @@ export default ({hook, Color}) ->
           changing_vals.all[..]
           .concat(changing_vals[image_index] ? [])
         continue if is_string image
-        {stops, angle} = image
+        {stops, angle, position} = image
         changed = null
-        for {start: start_change, end: end_change, type} in changing_vals_for_image when type is 'angle'
-          if angle is start_change.angle
-            (changed ?= {}).angle = end_change.angle
+        if angle?
+          for {start: start_change, end: end_change, type} in changing_vals_for_image when type is 'angle'
+            if angle is start_change.angle
+              (changed ?= {}).angle = end_change.angle
+        if position?
+          for {start: start_change, end: end_change, type} in changing_vals_for_image when type is 'length'
+            for {position: _position, unit}, pos_index in position when start_change.position is _position and start_change.unit is unit
+              ((changed ?= {}).position ?= [])[pos_index] =
+                position: end_change.position
+                unit:     end_change.unit
         for stop, stop_index in stops
           changed_stop = null
           for {start: start_change, end: end_change, type} in changing_vals_for_image
