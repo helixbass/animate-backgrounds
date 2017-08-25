@@ -53,7 +53,7 @@ Include the following `<script>` tags for the hook-enabled version of AnimeJS an
 
 Install `animejs-hooks` (hook-enabled version of `animejs`) and `animate-backgrounds` packages:
 
-`npm install animejs-hooks animate-backgrounds`
+`npm install --save animejs-hooks animate-backgrounds`
 
 Then load in your code via `require()` or `import`:
 
