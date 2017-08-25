@@ -1,14 +1,16 @@
 # animate-backgrounds
 
-> Read [the intro blogpost]()
-
 ## tl;dr
 
 Animate CSS `background-image` gradients, `background-position`, and `background-size` using jQuery or AnimeJS
 
+Check out the [docs][docs] for interactive examples
+
+Check out the [interactive tool][tool] for animating and customizing gradient patterns
+
 ## Dependencies
 
-- Animation engine: hooks into either jQuery or a hook-enabled [version]() of AnimeJS
+- Animation engine: hooks into either jQuery or a hook-enabled [version][animejs_hooks] of AnimeJS
 - the AnimeJS version depends on (and includes) [`tinycolor2`](https://github.com/bgrins/TinyColor)
 
 ## Installation
@@ -20,7 +22,7 @@ You can use `npm` or a `<script>` tag to include the animation handlers for eith
 ##### `<script>` tag
 
 Include the following `<script>` tag *after* jQuery:
-`<script src=''></script>`
+`<script src='https://unpkg.com/animate-backgrounds/animate-backgrounds.jquery.js'></script>`
 
 ##### using `npm`
 
@@ -34,8 +36,11 @@ Then load in your code via `require()` or `import`:
 
 ##### `<script>` tag
 
-Include the following `<script>` tag *after* AnimeJS:
-`<script src=''></script>`
+Include the following `<script>` tags for the hook-enabled version of AnimeJS and the background animation hooks themselves:
+```
+<script src='https://unpkg.com/animejs-hooks/anime.min.js'></script>
+<script src='https://unpkg.com/animate-backgrounds/animate-backgrounds.anime.js'></script>
+```
 
 ##### using `npm`
 
@@ -49,6 +54,12 @@ Then load in your code via `require()` or `import`:
 
 Once the hooks for `jQuery` or `AnimeJS` have been loaded (by one of the means described above),
 you can animate `background-image` gradients (`linear-gradient()`/`radial-gradient()`/`repeating-linear-gradient()`/`repeating-radial-gradient()`), `background-position`, and/or `background-size` like you would any other CSS property (ie by specifying the desired end CSS value). Or you can use [shorthand syntax](#shorthand-syntax) to just declaratively specify the desired changes from the initial value
+
+## Examples
+
+See [here][docs] for interactive examples of how to animate different aspects of gradients,
+`background-size` and `background-position` using your choice of jQuery vs AnimeJS and
+standard vs shorthand syntax
 
 ## Shorthand syntax
 
@@ -142,11 +153,37 @@ supplying the full desired CSS property value as the animation target value.
 - You can, however, animate between positional keywords and percent-valued locations (eg `top` -> `10%`)
   or directional keywords and angle values (eg `to bottom -> 45deg`)
 
-TODO: simultaneous animations? flag?
+## Simultaneous gradient animations
+
+Sometimes you may wish to animate different aspects of gradients at the same time.
+If those aspects have the same timing (delay, duration, easing) then you can just specify
+them as a single animation.
+But if they don't, you can instruct the animations not to get in each other's way by
+starting your target `backgroundImage` value with `simultaneous `
+(this works for either standard or shorthand syntax).
+
+See [here][docs_simultaneous] for an interactive example of using the `simultaneous` flag.
+
+> The `simultaneous` flag can make your animation slightly less performant
+> so I'd recommend only using when you actually have another "overlapping" animation of the
+> same `backgroundImage` property running at the same time.
+> Basically the gradient animation code always uses a diff
+> (ie only the parts of the gradient that are actually changing)
+> as its representation of the end value.
+> By default it uses the start value to "fill in" the unchanging parts of the gradient
+> as the animation runs.
+> But by using `simultaneous` it will check and use the current value (from the DOM)
+> each time the animation updates, thus avoiding clobbering changes made by other
+> simultaneous animations but also costing a bit more (b/c of the DOM reads)
+
 TODO: unsupported syntax?
 TODO: background-position and background-size can take a single value (and "multiply" it)
-TODO: link to gradients tool
 
 ## LICENSE
 
 MIT
+
+[docs]: http://helixbass.net/projects/animate_backgrounds
+[docs_simultaneous]: http://helixbass.net/projects/animate_backgrounds
+[tool]: http://helixbass.net/projects/gradients
+[animejs_hooks]: https://github.com/helixbass/animejs-hooks
