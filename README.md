@@ -23,17 +23,20 @@ You can use `npm` or a `<script>` tag to include the animation handlers for eith
 ##### `<script>` tag
 
 Include the following `<script>` tag *after* jQuery and jQuery Color:
-```<script src='https://unpkg.com/animate-backgrounds/animate-backgrounds.jquery.js'></script>```
+
+`<script src='https://unpkg.com/animate-backgrounds/animate-backgrounds.jquery.js'></script>`
 
 ##### using `npm`
 
 Install `jquery`, `jquery-color`, and `animate-backgrounds` packages:
+
 `npm install --save jquery github:jquery/jquery-color animate-backgrounds`
 > The latest npm-released version of `jquery-color` doesn't
 > [seem](https://github.com/jquery/jquery-color/issues/84) to work correctly
 > so I recommend installing `jquery-color` from Github as above
 
 Then load in your code via `require()` or `import`:
+
 `require('animate-backgrounds/animate-backgrounds.jquery')`
 
 #### for AnimeJS
@@ -49,9 +52,11 @@ Include the following `<script>` tags for the hook-enabled version of AnimeJS an
 ##### using `npm`
 
 Install `animejs-hooks` (hook-enabled version of `animejs`) and `animate-backgrounds` packages:
+
 `npm install animejs-hooks animate-backgrounds`
 
 Then load in your code via `require()` or `import`:
+
 `require('animate-backgrounds/animate-backgrounds.anime')`
 
 ## Usage
