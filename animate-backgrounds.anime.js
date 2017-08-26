@@ -85,7 +85,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 
 exports.default = function (arg) {
-  var Color, angle_from_direction, angle_or_direction_regex_chunk, color_regex_chunk, error, gradient_handler, hook, index_regex_chunk, length_regex_chunk, normalize_rel_ops, parse_linear_gradient, parse_radial_gradient, pre_stops_css_linear_gradient, pre_stops_css_radial_gradient, regex_chunk_str, register_animation_handler, scaled, unit_regex_chunk, value_regex_chunk;
+  var Color, _css_val, _extract_changes, _looks_like_shorthand, _parse_shorthand, angle_from_direction, angle_or_direction_regex_chunk, color_regex_chunk, error, gradient_handler, hook, index_regex_chunk, length_regex_chunk, normalize_rel_ops, parse_linear_gradient, parse_radial_gradient, pre_stops_css_linear_gradient, pre_stops_css_radial_gradient, regex_chunk_str, register_animation_handler, relative_length_regex_chunk, scaled, unit_regex_chunk, value_regex_chunk;
   hook = arg.hook, Color = arg.Color;
   register_animation_handler = function register_animation_handler(arg1) {
     var css_val_from_initialized_tween, hook_name, init, init_tween_end, parse, parsed_tween, prop_name;
@@ -118,24 +118,60 @@ exports.default = function (arg) {
   };
   unit_regex_chunk = regex_chunk_str(/(%|\w+)?/);
   length_regex_chunk = regex_chunk_str(RegExp("(?:([+-]?\\d+(?:\\.\\d*)?)" + unit_regex_chunk + ")"));
+  relative_length_regex_chunk = regex_chunk_str(RegExp("(?:([+-]=)?" + length_regex_chunk + ")"));
   index_regex_chunk = regex_chunk_str(/(?:\[(\d+)\])/);
-  normalize_rel_ops = function normalize_rel_ops(arg1) {
-    var end_image, image_index, j, len, parsed, results, start;
-    parsed = arg1.parsed, start = arg1.start;
-    results = [];
-    for (image_index = j = 0, len = parsed.length; j < len; image_index = ++j) {
-      end_image = parsed[image_index];
-      results.push(map(end_image, function (val, dim_index) {
-        var position, rel_op;
-        rel_op = val.rel_op, position = val.position;
-        if (!rel_op) {
-          return val;
-        }
-        val.position = start[image_index][dim_index].position + position * (rel_op === '-=' ? -1 : 1);
-        return val;
-      }));
+  _extract_changes = function _extract_changes(arg1) {
+    var _change, changed, dim_index, end_dim, end_image, image_index, j, k, len, len1, parsed_end, position, start, start_dim, start_image, unit;
+    parsed_end = arg1.parsed_end, start = arg1.start;
+    if (parsed_end.length !== start.length) {
+      error("Animation end value '" + end + "' has " + parsed_end.length + " background images, but start value has " + start.length);
     }
-    return results;
+    _change = [];
+    for (image_index = j = 0, len = start.length; j < len; image_index = ++j) {
+      start_image = start[image_index];
+      end_image = parsed_end[image_index];
+      changed = null;
+      for (dim_index = k = 0, len1 = start_image.length; k < len1; dim_index = ++k) {
+        start_dim = start_image[dim_index];
+        end_dim = end_image[dim_index];
+        if (!(start_dim.position != null && end_dim.position != null)) {
+          continue;
+        }
+        position = start_dim.position, unit = start_dim.unit;
+        if (position === end_dim.position) {
+          continue;
+        }
+        (changed != null ? changed : changed = [])[dim_index] = end_dim;
+      }
+      if (changed) {
+        _change[image_index] = changed;
+      }
+    }
+    return _change;
+  };
+  normalize_rel_ops = function normalize_rel_ops(arg1) {
+    var end_image, image_index, parsed, start;
+    parsed = arg1.parsed, start = arg1.start;
+    return {
+      start: start,
+      parsed_end: function () {
+        var j, len, results;
+        results = [];
+        for (image_index = j = 0, len = parsed.length; j < len; image_index = ++j) {
+          end_image = parsed[image_index];
+          results.push(map(end_image, function (val, dim_index) {
+            var position, rel_op;
+            if (!(val != null ? val.rel_op : void 0)) {
+              return val;
+            }
+            rel_op = val.rel_op, position = val.position;
+            val.position = start[image_index][dim_index].position + position * (rel_op === '-=' ? -1 : 1);
+            return val;
+          }));
+        }
+        return results;
+      }()
+    };
   };
   scaled = function scaled(arg1) {
     var end, pos, prop, start, val;
@@ -153,6 +189,171 @@ exports.default = function (arg) {
     }
     val = start + pos * (end - start);
     return val;
+  };
+  _looks_like_shorthand = function _looks_like_shorthand(end) {
+    if (RegExp("\\s*" + length_regex_chunk + "(?:\\s+" + length_regex_chunk + ")?\\s*->|" + index_regex_chunk).exec(end)) {
+      return true;
+    }
+  };
+  _parse_shorthand = function _parse_shorthand(arg1) {
+    var _change, changing_vals, end, start;
+    start = arg1.start, end = arg1.end;
+    changing_vals = function () {
+      var all, index, indexed_parsed_pairs, match, pair, parsed_pairs, position, ref, ref1, ref2, ref3, ref4, ref5, remaining, second_position, second_unit, separator, set_from_match_params, unit;
+      parsed_pairs = [];
+      indexed_parsed_pairs = {};
+      separator = null;
+      index = null;
+      remaining = end;
+      while (remaining) {
+        if (match = RegExp("^\\s*" + index_regex_chunk).exec(remaining)) {
+          all = match[0], index = match[1];
+          remaining = remaining.slice(all.length);
+        }
+        match = RegExp("^\\s*" + length_regex_chunk + "(?:[^\\n\\S]+" + length_regex_chunk + ")?\\s*->\\s*").exec(remaining);
+        if (!match) {
+          match = RegExp("^\\s*" + length_regex_chunk + "[^\\n\\S]+" + length_regex_chunk + "\\s*").exec(remaining);
+          all = match[0], position = match[1], unit = (ref = match[2]) != null ? ref : 'px', second_position = match[3], second_unit = (ref1 = match[4]) != null ? ref1 : 'px';
+          (indexed_parsed_pairs[index] != null ? indexed_parsed_pairs[index] : indexed_parsed_pairs[index] = []).push({
+            start: 'any',
+            end: {
+              position: position,
+              unit: unit,
+              second_position: second_position,
+              second_unit: second_unit
+            },
+            type: 'full'
+          });
+          remaining = remaining.slice(all.length);
+          continue;
+        }
+        all = match[0], position = match[1], unit = (ref2 = match[2]) != null ? ref2 : 'px', second_position = match[3], second_unit = (ref3 = match[4]) != null ? ref3 : 'px';
+        pair = {};
+        set_from_match_params = function set_from_match_params(start_or_end) {
+          pair[start_or_end] = {
+            unit: unit,
+            position: parseFloat(position)
+          };
+          if (second_position) {
+            if (start_or_end === 'start') {
+              pair.type = 'full';
+            }
+            return extend(pair[start_or_end], {
+              second_unit: second_unit,
+              second_position: parseFloat(second_position)
+            });
+          }
+        };
+        set_from_match_params('start');
+        remaining = remaining.slice(all.length);
+        match = RegExp("^" + length_regex_chunk + "(?:[^\\n\\S]+" + length_regex_chunk + ")?[^\\n\\S]*([,\\n])?\\s*").exec(remaining);
+        all = match[0], position = match[1], unit = (ref4 = match[2]) != null ? ref4 : 'px', second_position = match[3], second_unit = (ref5 = match[4]) != null ? ref5 : 'px', separator = match[5];
+        set_from_match_params('end');
+        (index != null ? indexed_parsed_pairs[index] != null ? indexed_parsed_pairs[index] : indexed_parsed_pairs[index] = [] : parsed_pairs).push(pair);
+        remaining = remaining.slice(all.length);
+      }
+      return extended(indexed_parsed_pairs, {
+        all: parsed_pairs
+      });
+    }();
+    _change = [];
+    map(start, function (start_image, image_index) {
+      var changed, changing_vals_for_image, dim_index, end_change, j, k, l, len, len1, len2, position, ref, ref1, ref2, ref3, ref4, ref5, second_position, second_unit, start_change, type, unit;
+      changing_vals_for_image = changing_vals.all.slice(0).concat((ref = changing_vals[image_index]) != null ? ref : []);
+      for (j = 0, len = changing_vals_for_image.length; j < len; j++) {
+        ref1 = changing_vals_for_image[j], start_change = ref1.start, end_change = ref1.end, type = ref1.type;
+        if (!(type === 'full')) {
+          continue;
+        }
+        (ref2 = start_image[0], position = ref2.position, unit = ref2.unit), (ref3 = start_image[1], second_position = ref3.position, second_unit = ref3.unit);
+        if (!(start_change === 'any' || position === start_change.position && (unit === start_change.unit || position === 0) && second_position === start_change.second_position && (second_unit === start_change.second_unit || second_position === 0))) {
+          continue;
+        }
+        return _change[image_index] = [{
+          position: end_change.position,
+          unit: end_change.unit
+        }, {
+          position: end_change.second_position,
+          unit: end_change.second_unit
+        }];
+      }
+      changed = null;
+      for (k = 0, len1 = changing_vals_for_image.length; k < len1; k++) {
+        ref4 = changing_vals_for_image[k], start_change = ref4.start, end_change = ref4.end, type = ref4.type;
+        if (type !== 'full') {
+          for (dim_index = l = 0, len2 = start_image.length; l < len2; dim_index = ++l) {
+            ref5 = start_image[dim_index], position = ref5.position, unit = ref5.unit;
+            if (!(start_change.position === position && start_change.unit === unit)) {
+              continue;
+            }
+            (changed != null ? changed : changed = [])[dim_index] = {
+              position: end_change.position,
+              unit: end_change.unit
+            };
+          }
+        }
+      }
+      if (changed != null) {
+        return _change[image_index] = changed;
+      }
+    });
+    return _change;
+  };
+  _css_val = function _css_val(arg1) {
+    var dim_str, end, image_index, image_str, pos, start, start_image, tween;
+    tween = arg1.tween;
+    pos = tween.pos, start = tween.start, end = tween.end;
+    dim_str = function dim_str(dim) {
+      var position, unit;
+      if (dim.position == null) {
+        return dim;
+      }
+      position = dim.position, unit = dim.unit;
+      return "" + position + unit;
+    };
+    image_str = function image_str(arg2) {
+      var dim1, dim2;
+      dim1 = arg2[0], dim2 = arg2[1];
+      return dim_str(dim1) + " " + dim_str(dim2);
+    };
+    return function () {
+      var j, len, results;
+      results = [];
+      for (image_index = j = 0, len = start.length; j < len; image_index = ++j) {
+        start_image = start[image_index];
+        results.push(function () {
+          var dim, dim_index, end_change;
+          end_change = end[image_index];
+          if (end_change == null) {
+            return image_str(start_image);
+          }
+          return function () {
+            var k, len1, results1;
+            results1 = [];
+            for (dim_index = k = 0, len1 = start_image.length; k < len1; dim_index = ++k) {
+              dim = start_image[dim_index];
+              results1.push(function () {
+                var dim_change;
+                if (!(dim_change = end_change != null ? end_change[dim_index] : void 0)) {
+                  return dim_str(dim);
+                }
+                return dim_str({
+                  position: scaled({
+                    start: dim,
+                    end: dim_change,
+                    pos: pos,
+                    prop: 'position'
+                  }),
+                  unit: dim_change.unit
+                });
+              }());
+            }
+            return results1;
+          }().join(' ').trim();
+        }());
+      }
+      return results;
+    }().join(', ');
   };
   register_animation_handler({
     prop_name: 'backgroundPosition',
@@ -186,7 +387,7 @@ exports.default = function (arg) {
           results1 = [];
           for (k = 0, len1 = ref1.length; k < len1; k++) {
             dim = ref1[k];
-            match = dim.match(RegExp("^([+-]=)?" + length_regex_chunk + "$"));
+            match = dim.match(RegExp("^" + relative_length_regex_chunk + "$"));
             all = match[0], rel_op = match[1], position = match[2], unit = (ref2 = match[3]) != null ? ref2 : 'px';
             results1.push({
               rel_op: rel_op,
@@ -200,119 +401,14 @@ exports.default = function (arg) {
       return results;
     },
     init_tween_end: function init_tween_end(arg1) {
-      var bg, end, extract_changes, looks_like_shorthand, parse, parse_shorthand, parsed, start, tween;
+      var bg, end, parse, parsed, start, tween;
       tween = arg1.tween, parse = arg1.parse;
       start = tween.start, end = tween.end;
-      parse_shorthand = function parse_shorthand() {
-        var _change, changing_vals;
-        changing_vals = function () {
-          var all, index, indexed_parsed_pairs, match, pair, parsed_pairs, position, ref, ref1, ref2, ref3, ref4, ref5, remaining, second_position, second_unit, separator, set_from_match_params, unit;
-          parsed_pairs = [];
-          indexed_parsed_pairs = {};
-          separator = null;
-          index = null;
-          remaining = end;
-          while (remaining) {
-            if (match = RegExp("^\\s*" + index_regex_chunk).exec(remaining)) {
-              all = match[0], index = match[1];
-              remaining = remaining.slice(all.length);
-            }
-            match = RegExp("^\\s*" + length_regex_chunk + "(?:[^\\n\\S]+" + length_regex_chunk + ")?\\s*->\\s*").exec(remaining);
-            if (!match) {
-              match = RegExp("^\\s*" + length_regex_chunk + "[^\\n\\S]+" + length_regex_chunk + "\\s*").exec(remaining);
-              all = match[0], position = match[1], unit = (ref = match[2]) != null ? ref : 'px', second_position = match[3], second_unit = (ref1 = match[4]) != null ? ref1 : 'px';
-              (indexed_parsed_pairs[index] != null ? indexed_parsed_pairs[index] : indexed_parsed_pairs[index] = []).push({
-                start: 'any',
-                end: {
-                  position: position,
-                  unit: unit,
-                  second_position: second_position,
-                  second_unit: second_unit
-                },
-                type: 'full'
-              });
-              remaining = remaining.slice(all.length);
-              continue;
-            }
-            all = match[0], position = match[1], unit = (ref2 = match[2]) != null ? ref2 : 'px', second_position = match[3], second_unit = (ref3 = match[4]) != null ? ref3 : 'px';
-            pair = {};
-            set_from_match_params = function set_from_match_params(start_or_end) {
-              pair[start_or_end] = {
-                unit: unit,
-                position: parseFloat(position)
-              };
-              if (second_position) {
-                if (start_or_end === 'start') {
-                  pair.type = 'full';
-                }
-                return extend(pair[start_or_end], {
-                  second_unit: second_unit,
-                  second_position: parseFloat(second_position)
-                });
-              }
-            };
-            set_from_match_params('start');
-            remaining = remaining.slice(all.length);
-            match = RegExp("^" + length_regex_chunk + "(?:[^\\n\\S]+" + length_regex_chunk + ")?[^\\n\\S]*([,\\n])?\\s*").exec(remaining);
-            all = match[0], position = match[1], unit = (ref4 = match[2]) != null ? ref4 : 'px', second_position = match[3], second_unit = (ref5 = match[4]) != null ? ref5 : 'px', separator = match[5];
-            set_from_match_params('end');
-            (index != null ? indexed_parsed_pairs[index] != null ? indexed_parsed_pairs[index] : indexed_parsed_pairs[index] = [] : parsed_pairs).push(pair);
-            remaining = remaining.slice(all.length);
-          }
-          return extended(indexed_parsed_pairs, {
-            all: parsed_pairs
-          });
-        }();
-        _change = [];
-        map(start, function (start_image, image_index) {
-          var changed, changing_vals_for_image, dim_index, end_change, j, k, l, len, len1, len2, position, ref, ref1, ref2, ref3, ref4, ref5, second_position, second_unit, start_change, type, unit;
-          changing_vals_for_image = changing_vals.all.slice(0).concat((ref = changing_vals[image_index]) != null ? ref : []);
-          for (j = 0, len = changing_vals_for_image.length; j < len; j++) {
-            ref1 = changing_vals_for_image[j], start_change = ref1.start, end_change = ref1.end, type = ref1.type;
-            if (!(type === 'full')) {
-              continue;
-            }
-            (ref2 = start_image[0], position = ref2.position, unit = ref2.unit), (ref3 = start_image[1], second_position = ref3.position, second_unit = ref3.unit);
-            if (!(start_change === 'any' || position === start_change.position && (unit === start_change.unit || position === 0) && second_position === start_change.second_position && (second_unit === start_change.second_unit || second_position === 0))) {
-              continue;
-            }
-            return _change[image_index] = [{
-              position: end_change.position,
-              unit: end_change.unit
-            }, {
-              position: end_change.second_position,
-              unit: end_change.second_unit
-            }];
-          }
-          changed = null;
-          for (k = 0, len1 = changing_vals_for_image.length; k < len1; k++) {
-            ref4 = changing_vals_for_image[k], start_change = ref4.start, end_change = ref4.end, type = ref4.type;
-            if (type !== 'full') {
-              for (dim_index = l = 0, len2 = start_image.length; l < len2; dim_index = ++l) {
-                ref5 = start_image[dim_index], position = ref5.position, unit = ref5.unit;
-                if (!(start_change.position === position && start_change.unit === unit)) {
-                  continue;
-                }
-                (changed != null ? changed : changed = [])[dim_index] = {
-                  position: end_change.position,
-                  unit: end_change.unit
-                };
-              }
-            }
-          }
-          if (changed != null) {
-            return _change[image_index] = changed;
-          }
+      if (_looks_like_shorthand(end)) {
+        return _parse_shorthand({
+          start: start,
+          end: end
         });
-        return _change;
-      };
-      looks_like_shorthand = function looks_like_shorthand() {
-        if (RegExp("\\s*" + length_regex_chunk + "(?:\\s+" + length_regex_chunk + ")?\\s*->|" + index_regex_chunk).exec(end)) {
-          return true;
-        }
-      };
-      if (looks_like_shorthand()) {
-        return parse_shorthand();
       }
       parsed = parse(end);
       if (parsed.length === 1 && parsed.length < start.length) {
@@ -326,103 +422,27 @@ exports.default = function (arg) {
           return results;
         }();
       }
-      extract_changes = function extract_changes(parsed_end) {
-        var _change, changed, dim_index, end_dim, end_image, image_index, j, k, len, len1, position, ref, start_image, unit;
-        if (parsed_end.length !== start.length) {
-          error("Animation end value '" + end + "' has " + parsed_end.length + " background images, but start value has " + start.length);
-        }
-        _change = [];
-        for (image_index = j = 0, len = start.length; j < len; image_index = ++j) {
-          start_image = start[image_index];
-          end_image = parsed_end[image_index];
-          changed = null;
-          for (dim_index = k = 0, len1 = start_image.length; k < len1; dim_index = ++k) {
-            ref = start_image[dim_index], position = ref.position, unit = ref.unit;
-            end_dim = end_image[dim_index];
-            if (position === end_dim.position) {
-              continue;
-            }
-            (changed != null ? changed : changed = [])[dim_index] = end_dim;
-          }
-          if (changed) {
-            _change[image_index] = changed;
-          }
-        }
-        return _change;
-      };
-      return extract_changes(normalize_rel_ops({
+      return _extract_changes(normalize_rel_ops({
         parsed: parsed,
         start: start
       }));
     },
-    css_val_from_initialized_tween: function css_val_from_initialized_tween(arg1) {
-      var dim_str, end, image_index, image_str, pos, start, start_image, tween;
-      tween = arg1.tween;
-      pos = tween.pos, start = tween.start, end = tween.end;
-      dim_str = function dim_str(arg2) {
-        var position, unit;
-        position = arg2.position, unit = arg2.unit;
-        return "" + position + unit;
-      };
-      image_str = function image_str(arg2) {
-        var dim1, dim2;
-        dim1 = arg2[0], dim2 = arg2[1];
-        return dim_str(dim1) + " " + dim_str(dim2);
-      };
-      return function () {
-        var j, len, results;
-        results = [];
-        for (image_index = j = 0, len = start.length; j < len; image_index = ++j) {
-          start_image = start[image_index];
-          results.push(function () {
-            var dim, dim_index, end_change;
-            end_change = end[image_index];
-            if (end_change == null) {
-              return image_str(start_image);
-            }
-            return function () {
-              var k, len1, results1;
-              results1 = [];
-              for (dim_index = k = 0, len1 = start_image.length; k < len1; dim_index = ++k) {
-                dim = start_image[dim_index];
-                results1.push(function () {
-                  var dim_change;
-                  if (!(dim_change = end_change != null ? end_change[dim_index] : void 0)) {
-                    return dim_str(dim);
-                  }
-                  return dim_str({
-                    position: scaled({
-                      start: dim,
-                      end: dim_change,
-                      pos: pos,
-                      prop: 'position'
-                    }),
-                    unit: dim_change.unit
-                  });
-                }());
-              }
-              return results1;
-            }().join(' ');
-          }());
-        }
-        return results;
-      }().join(', ');
-    }
+    css_val_from_initialized_tween: _css_val
   });
   register_animation_handler({
     prop_name: 'backgroundSize',
     parse: function parse(val) {
-      var _match, bg, dim, dims, j, len, ref, results;
+      var dim, dims, image, j, len, ref, results;
       ref = (val || '').split(/\s*,\s*/);
       results = [];
       for (j = 0, len = ref.length; j < len; j++) {
-        bg = ref[j];
+        image = ref[j];
         dims = function () {
           var supplied_dims;
-          if (bg === 'contain' || bg === 'cover') {
-            return [bg, ''];
+          if (image === 'contain' || image === 'cover') {
+            return [image, ''];
           }
-          supplied_dims = bg.split(/\s+/);
+          supplied_dims = image.split(/\s+/);
           if (supplied_dims.length !== 1) {
             return supplied_dims;
           }
@@ -433,16 +453,19 @@ exports.default = function (arg) {
           results1 = [];
           for (k = 0, len1 = dims.length; k < len1; k++) {
             dim = dims[k];
-            _match = dim.match(/^(?:(?:([+-]=)?([+-]?\d+(?:\.\d*)?)(.*))|auto)$/);
-            if (!(_match != null ? _match[2] : void 0)) {
-              results1.push(dim);
-            } else {
-              results1.push({
-                rel_op: _match[1],
-                amount: parseFloat(_match[2]),
-                unit: _match[3] || 'px'
-              });
-            }
+            results1.push(function () {
+              var all, match, position, ref1, rel_op, unit;
+              match = dim.match(RegExp("^(?:" + relative_length_regex_chunk + "|auto)$"));
+              if (!(match != null ? match[2] : void 0)) {
+                return dim;
+              }
+              all = match[0], rel_op = match[1], position = match[2], unit = (ref1 = match[3]) != null ? ref1 : 'px';
+              return {
+                rel_op: rel_op,
+                unit: unit,
+                position: parseFloat(position)
+              };
+            }());
           }
           return results1;
         }());
@@ -450,74 +473,33 @@ exports.default = function (arg) {
       return results;
     },
     init_tween_end: function init_tween_end(arg1) {
-      var bg, bgIndex, end, endBg, j, len, parse, parsed, results, start, tween;
+      var end, image, parse, parsed, start, tween;
       tween = arg1.tween, parse = arg1.parse;
       start = tween.start, end = tween.end;
+      if (_looks_like_shorthand(end)) {
+        return _parse_shorthand({
+          start: start,
+          end: end
+        });
+      }
       parsed = parse(end);
       if (parsed.length === 1 && parsed.length < start.length) {
         parsed = function () {
           var j, len, results;
           results = [];
           for (j = 0, len = start.length; j < len; j++) {
-            bg = start[j];
+            image = start[j];
             results.push(parsed[0]);
           }
           return results;
         }();
       }
-      results = [];
-      for (bgIndex = j = 0, len = parsed.length; j < len; bgIndex = ++j) {
-        endBg = parsed[bgIndex];
-        results.push(map(endBg, function (val, i) {
-          var amount, rel_op;
-          if (!(val != null ? val.unit : void 0)) {
-            return val;
-          }
-          rel_op = val.rel_op, amount = val.amount;
-          if (!rel_op) {
-            return val;
-          }
-          val.amount = start[bgIndex][i].amount + amount * (rel_op === '-=' ? -1 : 1);
-          return val;
-        }));
-      }
-      return results;
+      return _extract_changes(normalize_rel_ops({
+        parsed: parsed,
+        start: start
+      }));
     },
-    css_val_from_initialized_tween: function css_val_from_initialized_tween(arg1) {
-      var _adjusted, _span, bg_end, bg_index, bg_start, bg_start_dim, dim, end, pos, start, tween;
-      tween = arg1.tween;
-      pos = tween.pos, start = tween.start, end = tween.end;
-      return function () {
-        var j, len, results;
-        results = [];
-        for (bg_index = j = 0, len = start.length; j < len; bg_index = ++j) {
-          bg_start = start[bg_index];
-          bg_end = end[bg_index];
-          _span = function _span(dim) {
-            return bg_end[dim].amount - bg_start[dim].amount;
-          };
-          _adjusted = function _adjusted(dim) {
-            return bg_start[dim].amount + pos * _span(dim);
-          };
-          results.push(function () {
-            var k, len1, ref, results1;
-            ref = [0, 1];
-            results1 = [];
-            for (k = 0, len1 = ref.length; k < len1; k++) {
-              dim = ref[k];
-              bg_start_dim = bg_start[dim];
-              if (bg_start_dim != null ? bg_start_dim.unit : void 0) {
-                results1.push("" + _adjusted(dim) + bg_start_dim.unit);
-              } else {
-                results1.push(bg_start_dim);
-              }
-            }
-            return results1;
-          }().join(' ').trim());
-        }
-        return results;
-      }().join(', ');
-    }
+    css_val_from_initialized_tween: _css_val
   });
   color_regex_chunk = regex_chunk_str(/((?:rgba?\([^)]*\))|(?:hsla?\([^)]*\))|(?:\#[0-9A-Fa-f]+)|\w+)/);
   angle_or_direction_regex_chunk = regex_chunk_str(/(?:(-?\d+(?:.\d+)?)(deg|grad|rad|turn)|to\s+(bottom|top|left|right)(?:\s+(bottom|top|left|right))?)/);

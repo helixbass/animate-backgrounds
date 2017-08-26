@@ -73,6 +73,16 @@ export default ({hook, Color}) ->
     )
   ///
 
+  relative_length_regex_chunk = regex_chunk_str ///
+    (?:
+      ( # relative
+        [+-]
+        =
+      ) ?
+      #{length_regex_chunk}
+    )
+  ///
+
   index_regex_chunk = regex_chunk_str ///
     (?:
       \[
@@ -81,17 +91,38 @@ export default ({hook, Color}) ->
     )
   ///
 
+  _extract_changes = ({parsed_end, start}) ->
+    error "Animation end value '#{end}' has #{parsed_end.length} background images, but start value has #{start.length}" unless parsed_end.length is start.length
+
+    _change = []
+    for start_image, image_index in start
+      end_image = parsed_end[image_index]
+      changed = null
+
+      for start_dim, dim_index in start_image
+        end_dim = end_image[dim_index]
+        continue unless start_dim.position? and end_dim.position?
+        {position, unit} = start_dim
+        continue unless position isnt end_dim.position
+        (changed ?= [])[dim_index] = end_dim
+      _change[image_index] = changed if changed
+    _change
+
   normalize_rel_ops = ({parsed, start}) ->
-    for end_image, image_index in parsed
-      map end_image, (val, dim_index) ->
-        {rel_op, position} = val
-        return val unless rel_op
+    {
+      start
+      parsed_end:
+        for end_image, image_index in parsed
+          map end_image, (val, dim_index) ->
+            return val unless val?.rel_op
+            {rel_op, position} = val
 
-        val.position =
-          start[image_index][dim_index].position +
-            position * if rel_op is '-=' then -1 else 1
+            val.position =
+              start[image_index][dim_index].position +
+                position * if rel_op is '-=' then -1 else 1
 
-        val
+            val
+    }
 
   scaled = ({start, end, pos, prop}) ->
     if prop
@@ -102,6 +133,194 @@ export default ({hook, Color}) ->
       end   = prop end
     val = start + pos * (end - start)
     val
+
+  _looks_like_shorthand = (end) ->
+    return yes if ///
+      \s *
+      #{length_regex_chunk}
+      (?:
+        \s +
+        #{length_regex_chunk}
+      ) ?
+      \s *
+      ->
+      |
+      #{index_regex_chunk}
+    ///.exec end
+
+  _parse_shorthand = ({start, end}) ->
+    changing_vals = do ->
+      parsed_pairs         = []
+      indexed_parsed_pairs = {}
+      separator = null
+      index     = null
+      remaining = end
+      while remaining
+        # TODO: error if parsed_pairs.length and not separator
+        # TODO: move regexes to top level for optimization
+        if match = ///
+          ^
+          \s *
+          #{index_regex_chunk}
+        ///.exec remaining
+          [all, index] = match
+          remaining = remaining[all.length..]
+
+        # if match = ///
+        #   ^
+        #   \s *
+        #   #{index_regex_chunk}
+        # ///.exec remaining
+        #   [all, stop_index] = match
+        #   remaining = remaining[all.length..]
+
+        # TODO: match position keyword
+        match = ///
+          ^
+          \s *
+          #{length_regex_chunk}
+          (?:
+            [^\n\S] +
+            #{length_regex_chunk}
+          ) ?
+          \s *
+          ->
+          \s *
+        ///.exec remaining
+        unless match
+          # TODO: error unless index?
+          match = ///
+            ^
+            \s *
+            #{length_regex_chunk}
+            [^\n\S] +
+            #{length_regex_chunk}
+            \s *
+          ///.exec remaining
+
+          [
+            all
+            position, unit='px'
+            second_position, second_unit='px'
+          ] = match
+          (indexed_parsed_pairs[index] ?= [])
+          .push
+            start: 'any'
+            end: {
+              position, unit
+              second_position, second_unit
+            }
+            type: 'full'
+          remaining = remaining[all.length..]
+          continue
+        [
+          all
+          position, unit='px'
+          second_position, second_unit='px'
+        ] = match
+        pair = {}
+        set_from_match_params = (start_or_end) ->
+          pair[start_or_end] =
+            {unit, position: parseFloat position}
+          if second_position
+            pair.type = 'full' if start_or_end is 'start' # TODO: error if only start or end is a full stop?
+            extend pair[start_or_end], {
+              second_unit
+              second_position: parseFloat second_position
+            }
+        set_from_match_params 'start'
+
+        remaining = remaining[all.length..]
+        # TODO: match position keyword
+        match =
+          ///
+            ^
+            #{length_regex_chunk}
+            (?:
+              [^\n\S] +
+              #{length_regex_chunk}
+            ) ?
+            [^\n\S] *
+            ([,\n]) ?
+            \s *
+          ///.exec remaining
+        [
+          all
+          position, unit='px'
+          second_position, second_unit='px'
+          separator
+        ] = match
+        set_from_match_params 'end'
+        (if index?
+          indexed_parsed_pairs[index] ?= []
+        else
+          parsed_pairs
+        ).push pair
+        remaining = remaining[all.length..]
+
+      extended indexed_parsed_pairs,
+        all: parsed_pairs
+
+    _change = []
+    map start, (start_image, image_index) ->
+      changing_vals_for_image =
+        changing_vals.all[..]
+        .concat(changing_vals[image_index] ? [])
+      for {start: start_change, end: end_change, type} in changing_vals_for_image when type is 'full'
+        [{position, unit}, {position: second_position, unit: second_unit}] = start_image
+        continue unless (
+          start_change is 'any' or
+          position        is start_change.position and
+          (unit           is start_change.unit or position is 0) and
+          second_position is start_change.second_position and
+          (second_unit    is start_change.second_unit or second_position is 0)
+        )
+        return _change[image_index] = [
+          position: end_change.position
+          unit:     end_change.unit
+        ,
+          position: end_change.second_position
+          unit:     end_change.second_unit
+        ]
+      changed = null
+      for {start: start_change, end: end_change, type} in changing_vals_for_image when type isnt 'full'
+        for {position, unit}, dim_index in start_image
+          continue unless start_change.position is position and start_change.unit is unit
+          (changed ?= [])[dim_index] =
+            position: end_change.position
+            unit:     end_change.unit
+      _change[image_index] = changed if changed?
+    _change # TODO: warn/error if no detected changes? warn for each changing_val that wasn't found anywhere?
+
+  _css_val = ({tween}) ->
+    {pos, start, end} = tween
+
+    dim_str = (dim) ->
+      return dim unless dim.position?
+      {position, unit} = dim
+      "#{position}#{unit}"
+    image_str = ([dim1, dim2]) ->
+      "#{dim_str dim1} #{dim_str dim2}"
+
+    (for start_image, image_index in start then do ->
+      end_change = end[image_index]
+      return image_str start_image unless end_change?
+
+      (for dim, dim_index in start_image then do ->
+        return dim_str dim unless dim_change=end_change?[dim_index]
+        dim_str {
+          position:
+            scaled {
+              start: dim
+              end: dim_change
+              pos
+              prop: 'position'
+            }
+          unit: dim_change.unit
+        }
+      ).join ' '
+      .trim()
+    ).join ', '
 
   register_animation_handler
     prop_name: 'backgroundPosition'
@@ -143,11 +362,7 @@ export default ({hook, Color}) ->
             dim
             .match ///
               ^
-              ( # relative
-                [+-]
-                =
-              ) ?
-              #{length_regex_chunk}
+              #{relative_length_regex_chunk}
               $
             ///
           # TODO: error unless match
@@ -161,163 +376,7 @@ export default ({hook, Color}) ->
     init_tween_end: ({tween, parse}) ->
       {start, end} = tween
 
-      parse_shorthand = ->
-        changing_vals = do ->
-          parsed_pairs         = []
-          indexed_parsed_pairs = {}
-          separator = null
-          index     = null
-          remaining = end
-          while remaining
-            # TODO: error if parsed_pairs.length and not separator
-            # TODO: move regexes to top level for optimization
-            if match = ///
-              ^
-              \s *
-              #{index_regex_chunk}
-            ///.exec remaining
-              [all, index] = match
-              remaining = remaining[all.length..]
-
-            # if match = ///
-            #   ^
-            #   \s *
-            #   #{index_regex_chunk}
-            # ///.exec remaining
-            #   [all, stop_index] = match
-            #   remaining = remaining[all.length..]
-
-            # TODO: match position keyword
-            match = ///
-              ^
-              \s *
-              #{length_regex_chunk}
-              (?:
-                [^\n\S] +
-                #{length_regex_chunk}
-              ) ?
-              \s *
-              ->
-              \s *
-            ///.exec remaining
-            unless match
-              # TODO: error unless index?
-              match = ///
-                ^
-                \s *
-                #{length_regex_chunk}
-                [^\n\S] +
-                #{length_regex_chunk}
-                \s *
-              ///.exec remaining
-
-              [
-                all
-                position, unit='px'
-                second_position, second_unit='px'
-              ] = match
-              (indexed_parsed_pairs[index] ?= [])
-              .push
-                start: 'any'
-                end: {
-                  position, unit
-                  second_position, second_unit
-                }
-                type: 'full'
-              remaining = remaining[all.length..]
-              continue
-            [
-              all
-              position, unit='px'
-              second_position, second_unit='px'
-            ] = match
-            pair = {}
-            set_from_match_params = (start_or_end) ->
-              pair[start_or_end] =
-                {unit, position: parseFloat position}
-              if second_position
-                pair.type = 'full' if start_or_end is 'start' # TODO: error if only start or end is a full stop?
-                extend pair[start_or_end], {
-                  second_unit
-                  second_position: parseFloat second_position
-                }
-            set_from_match_params 'start'
-
-            remaining = remaining[all.length..]
-            # TODO: match position keyword
-            match =
-              ///
-                ^
-                #{length_regex_chunk}
-                (?:
-                  [^\n\S] +
-                  #{length_regex_chunk}
-                ) ?
-                [^\n\S] *
-                ([,\n]) ?
-                \s *
-              ///.exec remaining
-            [
-              all
-              position, unit='px'
-              second_position, second_unit='px'
-              separator
-            ] = match
-            set_from_match_params 'end'
-            (if index?
-              indexed_parsed_pairs[index] ?= []
-            else
-              parsed_pairs
-            ).push pair
-            remaining = remaining[all.length..]
-
-          extended indexed_parsed_pairs,
-            all: parsed_pairs
-
-        _change = []
-        map start, (start_image, image_index) ->
-          changing_vals_for_image =
-            changing_vals.all[..]
-            .concat(changing_vals[image_index] ? [])
-          for {start: start_change, end: end_change, type} in changing_vals_for_image when type is 'full'
-            [{position, unit}, {position: second_position, unit: second_unit}] = start_image
-            continue unless (
-              start_change is 'any' or
-              position        is start_change.position and
-              (unit           is start_change.unit or position is 0) and
-              second_position is start_change.second_position and
-              (second_unit    is start_change.second_unit or second_position is 0)
-            )
-            return _change[image_index] = [
-              position: end_change.position
-              unit:     end_change.unit
-            ,
-              position: end_change.second_position
-              unit:     end_change.second_unit
-            ]
-          changed = null
-          for {start: start_change, end: end_change, type} in changing_vals_for_image when type isnt 'full'
-            for {position, unit}, dim_index in start_image
-              continue unless start_change.position is position and start_change.unit is unit
-              (changed ?= [])[dim_index] =
-                position: end_change.position
-                unit:     end_change.unit
-          _change[image_index] = changed if changed?
-        _change # TODO: warn/error if no detected changes? warn for each changing_val that wasn't found anywhere?
-      looks_like_shorthand = ->
-        return yes if ///
-          \s *
-          #{length_regex_chunk}
-          (?:
-            \s +
-            #{length_regex_chunk}
-          ) ?
-          \s *
-          ->
-          |
-          #{index_regex_chunk}
-        ///.exec end
-      return do parse_shorthand if do looks_like_shorthand
+      return _parse_shorthand {start, end} if _looks_like_shorthand end
 
       parsed = parse end
       if parsed.length is 1 and parsed.length < start.length
@@ -325,58 +384,18 @@ export default ({hook, Color}) ->
           # repeat parsed[0], start.length
           for bg in start
             parsed[0]
-      extract_changes = (parsed_end) ->
-        error "Animation end value '#{end}' has #{parsed_end.length} background images, but start value has #{start.length}" unless parsed_end.length is start.length
+      _extract_changes normalize_rel_ops {parsed, start}
 
-        _change = []
-        for start_image, image_index in start
-          end_image = parsed_end[image_index]
-          changed = null
-
-          for {position, unit}, dim_index in start_image
-            end_dim = end_image[dim_index]
-            continue unless position isnt end_dim.position
-            (changed ?= [])[dim_index] = end_dim
-          _change[image_index] = changed if changed
-        _change
-
-      extract_changes normalize_rel_ops {parsed, start}
-
-    css_val_from_initialized_tween: ({tween}) ->
-      {pos, start, end} = tween
-
-      dim_str = ({position, unit}) ->
-        "#{position}#{unit}"
-      image_str = ([dim1, dim2]) ->
-        "#{dim_str dim1} #{dim_str dim2}"
-
-      (for start_image, image_index in start then do ->
-        end_change = end[image_index]
-        return image_str start_image unless end_change?
-
-        (for dim, dim_index in start_image then do ->
-          return dim_str dim unless dim_change=end_change?[dim_index]
-          dim_str {
-            position:
-              scaled {
-                start: dim
-                end: dim_change
-                pos
-                prop: 'position'
-              }
-            unit: dim_change.unit
-          }
-        ).join ' '
-      ).join ', '
+    css_val_from_initialized_tween: _css_val
 
   register_animation_handler
     prop_name: 'backgroundSize'
     parse: (val) ->
-      for bg in (val || '').split /\s*,\s*/
+      for image in (val || '').split /\s*,\s*/
         dims = do ->
-          return [bg, ''] if bg in ['contain', 'cover']
+          return [image, ''] if image in ['contain', 'cover']
 
-          supplied_dims = bg.split /\s+/
+          supplied_dims = image.split /\s+/
 
           return supplied_dims unless supplied_dims.length is 1
 
@@ -385,88 +404,39 @@ export default ({hook, Color}) ->
             'auto'
           ]
 
-        for dim in dims
-          _match =
+        for dim in dims then do ->
+          match =
             dim
             .match ///
               ^
               (?:
-               (?: # non-keyword (ie numeric) value
-                ( # relative
-                 [+-]
-                 =
-                ) ?
-                ( # numeric value
-                 [+-] ?
-                 \d +
-                 (?:
-                  \.
-                  \d *
-                 ) ?
-                )
-                ( # unit
-                 . *
-                )
-               )
-               | auto
+                #{relative_length_regex_chunk}
+                |
+                auto
               )
               $
             ///
+          return dim unless match?[2]
+          [all, rel_op, position, unit='px'] = match
 
-          unless _match?[2]
-            dim
-          else
-            rel_op: _match[1]
-            amount: parseFloat _match[2]
-            unit: _match[3] or 'px'
+          {
+            rel_op, unit
+            position: parseFloat position
+          }
 
     init_tween_end: ({tween, parse}) ->
       {start, end} = tween
+
+      return _parse_shorthand {start, end} if _looks_like_shorthand end
 
       parsed = parse end
       if parsed.length is 1 and parsed.length < start.length
         parsed =
           # repeat parsed[0], start.length
-          for bg in start
+          for image in start
             parsed[0]
-      for endBg, bgIndex in parsed
-        map endBg, (val, i) ->
-          return val unless val?.unit
-          {rel_op, amount} = val
-          return val unless rel_op
-
-          val.amount =
-            start[bgIndex][i].amount +
-              amount * if rel_op is '-=' then -1 else 1
-
-          val
-
-    css_val_from_initialized_tween: ({tween}) ->
-      {
-        pos
-        start
-        end
-      } = tween
-
-      (
-        for bg_start, bg_index in start
-          bg_end = end[bg_index]
-
-          _span = ( dim ) ->
-            bg_end[dim].amount - bg_start[dim].amount
-          _adjusted = ( dim ) ->
-            bg_start[dim].amount + pos * _span dim
-          (
-            for dim in [0, 1]
-              bg_start_dim = bg_start[dim]
-              if bg_start_dim?.unit
-                "#{ _adjusted dim }#{ bg_start_dim.unit }"
-              else bg_start_dim
-          )
-          .join ' '
-          .trim()
-      )
-      .join ', '
+      _extract_changes normalize_rel_ops {parsed, start}
+    css_val_from_initialized_tween: _css_val
 
   color_regex_chunk = regex_chunk_str ///
     ( # color
