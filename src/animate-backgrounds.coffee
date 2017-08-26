@@ -39,68 +39,285 @@ export default ({hook, Color}) ->
       css_val_from_initialized_tween
     }
 
+  regex_chunk_str = (regex) ->
+    [all, chunk] =
+      ///
+        ^
+        /
+        ( . * )
+        /
+        [^/] *
+        $
+      ///.exec regex.toString()
+    chunk
+
+  unit_regex_chunk = regex_chunk_str ///
+    ( # unit
+      %
+      |
+      \w +
+    ) ?
+  ///
+
+  length_regex_chunk = regex_chunk_str ///
+    (?:
+      ( # position
+        [+-] ?
+        \d +
+        (?:
+          \.
+          \d *
+        ) ?
+      )
+      #{unit_regex_chunk}
+    )
+  ///
+
+  index_regex_chunk = regex_chunk_str ///
+    (?:
+      \[
+      (\d +)
+      \]
+    )
+  ///
+
+  normalize_rel_ops = ({parsed, start}) ->
+    for end_image, image_index in parsed
+      map end_image, (val, dim_index) ->
+        {rel_op, position} = val
+        return val unless rel_op
+
+        val.position =
+          start[image_index][dim_index].position +
+            position * if rel_op is '-=' then -1 else 1
+
+        val
+
+  scaled = ({start, end, pos, prop}) ->
+    if prop
+      if is_string prop
+        prop = do (prop) ->
+          (val) -> val[prop]
+      start = prop start
+      end   = prop end
+    val = start + pos * (end - start)
+    val
+
   register_animation_handler
     prop_name: 'backgroundPosition'
     parse: (val) ->
-      for bg in (val || '').split /\s*,\s*/
-        dims = do ->
-          unstandardized_dims = bg.split /\s+/
+      standardize_dims = (image) ->
+        unstandardized_dims = image.split /\s+/
 
-          if unstandardized_dims.length is 1
-            unstandardized_dims =
-              if unstandardized_dims[0] in ['top', 'bottom']
-                [
-                  '50%'
-                  unstandardized_dims[0]
-                ]
-              else
-                [
-                  unstandardized_dims[0]
-                  '50%'
-                ]
+        if unstandardized_dims.length is 1
+          unstandardized_dims =
+            if unstandardized_dims[0] in ['top', 'bottom']
+              [
+                '50%'
+                unstandardized_dims[0]
+              ]
+            else
+              [
+                unstandardized_dims[0]
+                '50%'
+              ]
 
-          map(
-            unstandardized_dims
-            ( dim ) ->
-              presets =
-                center: '50%'
-                left:   '0%'
-                right:  '100%'
-                top:    '0%'
-                bottom: '100%'
+        presets =
+          center: '50%'
+          left:   '0%'
+          right:  '100%'
+          top:    '0%'
+          bottom: '100%'
 
-              "#{ presets[dim] or dim }"
-          )
+        map(
+          unstandardized_dims
+          (dim) ->
+            "#{presets[dim] ? dim}"
+        )
 
-        for dim in dims
-          _match =
+      for image in (val || '').split /\s*,\s*/
+        # TODO: support edge offset syntax
+        # TODO: error unless dims.length is 2
+        for dim in standardize_dims image
+          match =
             dim
             .match ///
               ^
               ( # relative
-               [+-]
-               =
+                [+-]
+                =
               ) ?
-              ( # numeric value
-               [+-] ?
-               \d +
-               (?:
-                \.
-                \d *
-               ) ?
-              )
-              ( # unit
-               . *
-              )
+              #{length_regex_chunk}
               $
             ///
+          # TODO: error unless match
+          [all, rel_op, position, unit='px'] = match
 
-          rel_op: _match[1]
-          amount: parseFloat _match[2]
-          unit: _match[3] or 'px'
+          {
+            rel_op, unit
+            position: parseFloat position
+          }
 
     init_tween_end: ({tween, parse}) ->
-      { start, end } = tween
+      {start, end} = tween
+
+      parse_shorthand = ->
+        changing_vals = do ->
+          parsed_pairs         = []
+          indexed_parsed_pairs = {}
+          separator = null
+          index     = null
+          remaining = end
+          while remaining
+            # TODO: error if parsed_pairs.length and not separator
+            # TODO: move regexes to top level for optimization
+            if match = ///
+              ^
+              \s *
+              #{index_regex_chunk}
+            ///.exec remaining
+              [all, index] = match
+              remaining = remaining[all.length..]
+
+            # if match = ///
+            #   ^
+            #   \s *
+            #   #{index_regex_chunk}
+            # ///.exec remaining
+            #   [all, stop_index] = match
+            #   remaining = remaining[all.length..]
+
+            # TODO: match position keyword
+            match = ///
+              ^
+              \s *
+              #{length_regex_chunk}
+              (?:
+                [^\n\S] +
+                #{length_regex_chunk}
+              ) ?
+              \s *
+              ->
+              \s *
+            ///.exec remaining
+            unless match
+              # TODO: error unless index?
+              match = ///
+                ^
+                \s *
+                #{length_regex_chunk}
+                [^\n\S] +
+                #{length_regex_chunk}
+                \s *
+              ///.exec remaining
+
+              [
+                all
+                position, unit='px'
+                second_position, second_unit='px'
+              ] = match
+              (indexed_parsed_pairs[index] ?= [])
+              .push
+                start: 'any'
+                end: {
+                  position, unit
+                  second_position, second_unit
+                }
+                type: 'full'
+              remaining = remaining[all.length..]
+              continue
+            [
+              all
+              position, unit='px'
+              second_position, second_unit='px'
+            ] = match
+            pair = {}
+            set_from_match_params = (start_or_end) ->
+              pair[start_or_end] =
+                {unit, position: parseFloat position}
+              if second_position
+                pair.type = 'full' if start_or_end is 'start' # TODO: error if only start or end is a full stop?
+                extend pair[start_or_end], {
+                  second_unit
+                  second_position: parseFloat second_position
+                }
+            set_from_match_params 'start'
+
+            remaining = remaining[all.length..]
+            # TODO: match position keyword
+            match =
+              ///
+                ^
+                #{length_regex_chunk}
+                (?:
+                  [^\n\S] +
+                  #{length_regex_chunk}
+                ) ?
+                [^\n\S] *
+                ([,\n]) ?
+                \s *
+              ///.exec remaining
+            [
+              all
+              position, unit='px'
+              second_position, second_unit='px'
+              separator
+            ] = match
+            set_from_match_params 'end'
+            (if index?
+              indexed_parsed_pairs[index] ?= []
+            else
+              parsed_pairs
+            ).push pair
+            remaining = remaining[all.length..]
+
+          extended indexed_parsed_pairs,
+            all: parsed_pairs
+
+        _change = []
+        map start, (start_image, image_index) ->
+          changing_vals_for_image =
+            changing_vals.all[..]
+            .concat(changing_vals[image_index] ? [])
+          for {start: start_change, end: end_change, type} in changing_vals_for_image when type is 'full'
+            [{position, unit}, {position: second_position, unit: second_unit}] = start_image
+            continue unless (
+              start_change is 'any' or
+              position        is start_change.position and
+              (unit           is start_change.unit or position is 0) and
+              second_position is start_change.second_position and
+              (second_unit    is start_change.second_unit or second_position is 0)
+            )
+            return _change[image_index] = [
+              position: end_change.position
+              unit:     end_change.unit
+            ,
+              position: end_change.second_position
+              unit:     end_change.second_unit
+            ]
+          changed = null
+          for {start: start_change, end: end_change, type} in changing_vals_for_image when type isnt 'full'
+            for {position, unit}, dim_index in start_image
+              continue unless start_change.position is position and start_change.unit is unit
+              (changed ?= [])[dim_index] =
+                position: end_change.position
+                unit:     end_change.unit
+          _change[image_index] = changed if changed?
+        _change # TODO: warn/error if no detected changes? warn for each changing_val that wasn't found anywhere?
+      looks_like_shorthand = ->
+        return yes if ///
+          \s *
+          #{length_regex_chunk}
+          (?:
+            \s +
+            #{length_regex_chunk}
+          ) ?
+          \s *
+          ->
+          |
+          #{index_regex_chunk}
+        ///.exec end
+      return do parse_shorthand if do looks_like_shorthand
 
       parsed = parse end
       if parsed.length is 1 and parsed.length < start.length
@@ -108,36 +325,49 @@ export default ({hook, Color}) ->
           # repeat parsed[0], start.length
           for bg in start
             parsed[0]
-      for endBg, bgIndex in parsed
-        map endBg, ( val, i ) ->
-          {rel_op, amount} = val
-          return val unless rel_op
+      extract_changes = (parsed_end) ->
+        error "Animation end value '#{end}' has #{parsed_end.length} background images, but start value has #{start.length}" unless parsed_end.length is start.length
 
-          val.amount =
-            start[bgIndex][i].amount +
-              amount * if rel_op is '-=' then -1 else 1
+        _change = []
+        for start_image, image_index in start
+          end_image = parsed_end[image_index]
+          changed = null
 
-          val
+          for {position, unit}, dim_index in start_image
+            end_dim = end_image[dim_index]
+            continue unless position isnt end_dim.position
+            (changed ?= [])[dim_index] = end_dim
+          _change[image_index] = changed if changed
+        _change
+
+      extract_changes normalize_rel_ops {parsed, start}
 
     css_val_from_initialized_tween: ({tween}) ->
-      {
-        pos
-        start
-        end
-      } = tween
+      {pos, start, end} = tween
 
-      (
-        for bgStart, bgIndex in start
-          bgEnd = end[bgIndex]
+      dim_str = ({position, unit}) ->
+        "#{position}#{unit}"
+      image_str = ([dim1, dim2]) ->
+        "#{dim_str dim1} #{dim_str dim2}"
 
-          _span = ( dim ) ->
-            bgEnd[dim].amount - bgStart[dim].amount
-          _adjusted = ( dim ) ->
-            bgStart[dim].amount + pos * _span dim
-          ( "#{ _adjusted dim }#{ bgStart[dim].unit }" for dim in [0, 1])
-          .join ' '
-      )
-      .join ', '
+      (for start_image, image_index in start then do ->
+        end_change = end[image_index]
+        return image_str start_image unless end_change?
+
+        (for dim, dim_index in start_image then do ->
+          return dim_str dim unless dim_change=end_change?[dim_index]
+          dim_str {
+            position:
+              scaled {
+                start: dim
+                end: dim_change
+                pos
+                prop: 'position'
+              }
+            unit: dim_change.unit
+          }
+        ).join ' '
+      ).join ', '
 
   register_animation_handler
     prop_name: 'backgroundSize'
@@ -238,36 +468,6 @@ export default ({hook, Color}) ->
       )
       .join ', '
 
-  regex_chunk_str = (regex) ->
-    [all, chunk] =
-      ///
-        ^
-        /
-        ( . * )
-        /
-        [^/] *
-        $
-      ///.exec regex.toString()
-    chunk
-
-  length_regex_chunk = regex_chunk_str ///
-    (?:
-      ( # position
-        [+-] ?
-        \d +
-        (?:
-          \.
-          \d *
-        ) ?
-      )
-      ( # unit
-        %
-        |
-        \w +
-      ) ?
-    )
-  ///
-
   color_regex_chunk = regex_chunk_str ///
     ( # color
       (?: # rgb(a)
@@ -290,16 +490,6 @@ export default ({hook, Color}) ->
       \w + # color name / transparent
     )
   ///
-
-  scaled = ({start, end, pos, prop}) ->
-    if prop
-      if is_string prop
-        prop = do (prop) ->
-          (val) -> val[prop]
-      start = prop start
-      end   = prop end
-    val = start + pos * (end - start)
-    val
 
   angle_or_direction_regex_chunk = regex_chunk_str ///
     (?: # angle or directions
@@ -332,14 +522,6 @@ export default ({hook, Color}) ->
       #{length_regex_chunk}
       |
       #{color_regex_chunk}
-    )
-  ///
-
-  index_regex_chunk = regex_chunk_str ///
-    (?:
-      \[
-      (\d +)
-      \]
     )
   ///
 
@@ -691,13 +873,15 @@ export default ({hook, Color}) ->
         get_current_image = ->
           get_current()[image_index]
         current_image = do get_current_image
+        # TODO: return (non-parsed) current image unless end_change?
 
-        adjusted_stops =
+        adjusted_stops = do ->
+          return current_image.stops unless end_change?.stops
           for stop, stop_index in image.stops then do ->
             {color, unit, position} = stop
 
             current_stop = current_image.stops[stop_index]
-            return current_stop unless stop_change=end_change?.stops?[stop_index]
+            return current_stop unless stop_change=end_change.stops[stop_index]
             {
               color:
                 if color_change=stop_change.color
