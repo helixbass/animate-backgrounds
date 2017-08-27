@@ -1,6 +1,6 @@
 {
   "name": "animate-backgrounds",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Animate CSS linear and radial gradients, backgroundSize and backgroundPosition using jQuery or anime.js",
   "main": "index.js",
   "scripts": {

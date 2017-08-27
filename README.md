@@ -146,9 +146,9 @@ Of course, if you find it simpler/more convenient, you can always use the tradit
 supplying the full desired CSS property value as the animation target value.
 
 ## Gradients: what can I animate?
-- Any colors, positions (ie stop positions, radial gradient start position), and/or angles (ie linear gradient direction) should be animatable
+- Any colors, positions (ie stop positions, radial gradient start position, radial gradient extent), and/or angles (ie linear gradient direction) should be animatable
 - Animating color opacity is supported. You can specify target values using `rgba()` syntax. You can animate to/from `transparent`.
-  `transparent` is equivalent to `rgba(0, 0, 0, 0)` (TODO: is this right?) so to only animate a color's opacity, you may want to explicitly specify a fully
+  `transparent` is equivalent to `rgba(0, 0, 0, 0)` so to only animate a color's opacity, you may want to explicitly specify a fully
    opaque version of your color as your start or end value. Eg if fading out `#f00`, you may want to specify the target value as `rgba(255, 0, 0, 0)`
    so that your color doesn't shift while the opacity is animating
 - You must have the same number of color stops (per respective gradient) in your target value as in your start value (when using traditional syntax).

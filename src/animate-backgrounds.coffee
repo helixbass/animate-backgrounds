@@ -1,5 +1,7 @@
 is_string = (obj) ->
   Object::toString.call(obj) is '[object String]'
+is_array = (obj) ->
+  Object::toString.call(obj) is '[object Array]'
 
 # background-position logic and general approach from Extending jQuery
 
@@ -23,10 +25,10 @@ export default ({hook, Color}) ->
     parsed_tween = (tween) ->
       parse window.getComputedStyle(tween.elem)[prop_name]
 
-    init = ( tween ) ->
+    init = (tween) ->
       tween.start = parsed_tween tween
 
-      tween.end = init_tween_end { tween, parse }
+      tween.end = init_tween_end {tween, parse}
 
       tween.set = yes
 
@@ -546,13 +548,15 @@ export default ({hook, Color}) ->
           error "Animation end value '#{end}' has #{end_image.stops.length} color stops, but start value has #{start_image.stops.length}" unless end_image.stops.length is start_image.stops.length
           changed = null
 
+          compare_length_list = (prop_name) ->
+            for start_dim, i in start_image[prop_name]
+              end_dim = end_image[prop_name][i]
+              continue unless start_dim.position isnt end_dim.position
+              ((changed ?= {})[prop_name] ?= [])[i] = end_dim
+          compare_length_list 'extent' if is_array start_image.extent
           if start_image.angle? and start_image.angle isnt end_image.angle
             (changed ?= {}).angle = end_image.angle
-          if start_image.position?
-            for start_pos, i in start_image.position
-              end_pos = end_image.position[i]
-              continue unless start_pos.position isnt end_pos.position
-              ((changed ?= {}).position ?= [])[i] = end_pos
+          compare_length_list 'position' if start_image.position?
           for start_stop, stop_index in start_image.stops
             end_stop = end_image.stops[stop_index]
             changed_stop = null
@@ -684,23 +688,27 @@ export default ({hook, Color}) ->
           all: parsed_pairs
 
       _change = []
-      for image, image_index in start
+      for start_image, image_index in start
         changing_vals_for_image =
           changing_vals.all[..]
           .concat(changing_vals[image_index] ? [])
-        continue if is_string image
-        {stops, angle, position} = image
+        continue if is_string start_image
+        {stops, angle} = start_image
         changed = null
+        detect_length_list_changes = (prop_name) ->
+          return unless (start_prop=start_image[prop_name])?.length
+
+          for {start: start_change, end: end_change, type} in changing_vals_for_image when type is 'length'
+            for {position, unit}, pos_index in start_prop when start_change.position is position and start_change.unit is unit
+              ((changed ?= {})[prop_name] ?= [])[pos_index] =
+                position: end_change.position
+                unit:     end_change.unit
+        detect_length_list_changes 'extent'
+        detect_length_list_changes 'position'
         if angle?
           for {start: start_change, end: end_change, type} in changing_vals_for_image when type is 'angle'
             if angle is start_change.angle
               (changed ?= {}).angle = end_change.angle
-        if position?
-          for {start: start_change, end: end_change, type} in changing_vals_for_image when type is 'length'
-            for {position: _position, unit}, pos_index in position when start_change.position is _position and start_change.unit is unit
-              ((changed ?= {}).position ?= [])[pos_index] =
-                position: end_change.position
-                unit:     end_change.unit
         for stop, stop_index in stops
           changed_stop = null
           for {start: start_change, end: end_change, type} in changing_vals_for_image
@@ -951,7 +959,15 @@ export default ({hook, Color}) ->
       (circle | ellipse)
     ///
     extent_regex_chunk = regex_chunk_str ///
-      (closest-corner | closest-side | farthest-corner | farthest-side)
+      (?:
+        (closest-corner | closest-side | farthest-corner | farthest-side)
+        |
+        #{length_regex_chunk}
+        (?:
+          \s +
+          #{length_regex_chunk}
+        ) ?
+      )
     ///
     single_position_regex_chunk = regex_chunk_str ///
       (?:
@@ -975,7 +991,7 @@ export default ({hook, Color}) ->
       \s *
       #{function_name}\(
       \s *
-      (?: # optional shape/extent/position TODO: handle length/percentages instead of circle/ellipse
+      (?: # optional shape/extent/position
         (?:
           #{shape_regex_chunk}
           (?:
@@ -1007,19 +1023,44 @@ export default ({hook, Color}) ->
     return image unless match
     [
       all
-      shape1, extent1
-      extent2, shape2
-      keyword1, position1, unit1
-      keyword2, position2, unit2
+      shape1, extent_keyword1, extent_first_position1, extent_first_unit1='px', extent_second_position1, extend_second_unit1='px'
+      extent_keyword2, extent_first_position2, extent_first_unit2='px', extent_second_position2, extent_second_unit2='px', shape2
+      keyword1, position1, unit1='px'
+      keyword2, position2, unit2='px'
       stops_str
     ] = match
 
     {
       obj:
         shape:
-          shape1 ? shape2 ? 'ellipse'
-        extent:
-          extent1 ? extent2
+          # TODO: error if explicitly "ellipse" but only one extent value?
+          shape1 ? shape2 ? if (extent_first_position1? or extent_first_position2?) and not (extent_second_position1? or extent_second_position2?) then 'circle' else 'ellipse'
+        extent: do ->
+          return extent_keyword if extent_keyword=extent_keyword1 ? extent_keyword2
+          if extent_first_position1?
+            return [
+              position: parseFloat extent_first_position1
+              unit: extent_first_unit1
+            ] unless extent_second_position1?
+            return [
+              position: parseFloat extent_first_position1
+              unit: extent_first_unit1
+            ,
+              position: parseFloat extent_second_position1
+              unit: extent_second_unit1
+            ]
+          return unless extent_first_position2?
+          return [
+            position: parseFloat extent_first_position2
+            unit: extent_first_unit2
+          ] unless extent_second_position2?
+          [
+            position: parseFloat extent_first_position2
+            unit: extent_first_unit2
+          ,
+            position: parseFloat extent_second_position2
+            unit: extent_second_unit2
+          ]
         position: do ->
           from_keyword = (keyword) ->
             switch keyword
@@ -1057,44 +1098,51 @@ export default ({hook, Color}) ->
     }
 
   pre_stops_css_radial_gradient = ({start_gradient, end_change, pos, get_current_image}) ->
-    {angle_unit} = start_gradient
+    {shape} = start_gradient
+
+    changed_length_list_str = (prop_name) ->
+      return unless prop_change=end_change?[prop_name]
+
+      (for start_dim, dim_index in start_gradient[prop_name]
+        dim_change = prop_change[dim_index]
+        "#{
+          if dim_change
+            scaled {
+              start: start_dim.position
+              end: dim_change.position
+              pos
+            }
+          else
+            get_current_image()[prop_name][dim_index]
+            .position
+        }#{ dim_change?.unit ? start_dim.unit }"
+      ).join ' '
+    length_list_str = (lengths) ->
+      (for {position, unit} in lengths
+        "#{position}#{unit}"
+      ).join ' '
 
     "#{
-      if angle_change=end_change?.angle
-        scaled {
-          start: start_gradient.angle
-          end: angle_change
-          pos
-        }
-      else
-        get_current_image()
-        .angle
-    }#{angle_unit}, "
-    {shape, extent, position} = start_gradient
-
-    "#{shape}#{
-      if extent
-        " #{extent}"
+      unless start_gradient.extent?.length # TODO: submit this as a Chrome bug?
+        shape
       else ''
-    } at #{
-      if position_change=end_change?.position
-        (for pos_index in [0, 1]
-          "#{
-            if position_change[pos_index]
-              scaled {
-                start: position[pos_index].position
-                end: position_change[pos_index].position
-                pos
-              }
-            else
-              get_current_image()
-              .position[pos_index]
-              .position
-          }#{ position[pos_index].unit }"
-        ).join ' '
+    }#{
+      if changed_extent=changed_length_list_str 'extent'
+        " #{changed_extent}"
       else
-        {position: current_pos} = get_current_image()
-        "#{current_pos[0].position}#{current_pos[0].unit} #{current_pos[1].position}#{current_pos[1].unit}"
+        if current_extent=get_current_image().extent
+          " #{
+            if is_array current_extent
+              length_list_str current_extent
+            else
+              current_extent
+          }"
+        else ''
+    } at #{
+      if changed_position=changed_length_list_str 'position'
+        changed_position
+      else
+        length_list_str get_current_image().position
     }, "
 
   register_animation_handler gradient_handler

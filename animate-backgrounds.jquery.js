@@ -552,7 +552,7 @@ exports.default = function (arg) {
       hook_name: hook_name,
       prop_name: 'backgroundImage',
       init_tween_end: function init_tween_end(arg2) {
-        var _change, _eq, _position, all, angle, base, base1, changed, changed_stop, changing_vals, changing_vals_for_image, color, color_change, end, end_change, extract_changes, image, image_index, j, k, l, len, len1, len2, len3, len4, len5, looks_like_shorthand, m, match, n, o, parse, pos_index, position, ref, ref1, ref2, ref3, ref4, start, start_change, stop, stop_index, stops, tween, type, unit, use_opacity;
+        var _change, _eq, all, angle, base, changed, changed_stop, changing_vals, changing_vals_for_image, color, color_change, detect_length_list_changes, end, end_change, extract_changes, image_index, j, k, l, len, len1, len2, len3, looks_like_shorthand, m, match, parse, position, ref, ref1, ref2, start, start_change, start_image, stop, stop_index, stops, tween, type, unit, use_opacity;
         tween = arg2.tween, parse = arg2.parse;
         start = tween.start, end = tween.end;
         if (match = /^simultaneous\s*/.exec(end)) {
@@ -561,7 +561,7 @@ exports.default = function (arg) {
           end = end.slice(all.length);
         }
         extract_changes = function extract_changes(parsed_end) {
-          var _change, base, base1, change_stop, changed, changed_stop, end_image, end_pos, end_stop, i, image_index, j, k, l, len, len1, len2, ref, ref1, start_image, start_pos, start_stop, stop_index;
+          var _change, base, change_stop, changed, changed_stop, compare_length_list, end_image, end_stop, image_index, j, k, len, len1, ref, start_image, start_stop, stop_index;
           if (parsed_end.length !== start.length) {
             error("Animation end value '" + end + "' has " + parsed_end.length + " background images, but start value has " + start.length);
           }
@@ -579,23 +579,32 @@ exports.default = function (arg) {
               error("Animation end value '" + end + "' has " + end_image.stops.length + " color stops, but start value has " + start_image.stops.length);
             }
             changed = null;
+            compare_length_list = function compare_length_list(prop_name) {
+              var base, end_dim, i, k, len1, ref, results, start_dim;
+              ref = start_image[prop_name];
+              results = [];
+              for (i = k = 0, len1 = ref.length; k < len1; i = ++k) {
+                start_dim = ref[i];
+                end_dim = end_image[prop_name][i];
+                if (start_dim.position === end_dim.position) {
+                  continue;
+                }
+                results.push(((base = changed != null ? changed : changed = {})[prop_name] != null ? base[prop_name] : base[prop_name] = [])[i] = end_dim);
+              }
+              return results;
+            };
+            if (is_array(start_image.extent)) {
+              compare_length_list('extent');
+            }
             if (start_image.angle != null && start_image.angle !== end_image.angle) {
               (changed != null ? changed : changed = {}).angle = end_image.angle;
             }
             if (start_image.position != null) {
-              ref = start_image.position;
-              for (i = k = 0, len1 = ref.length; k < len1; i = ++k) {
-                start_pos = ref[i];
-                end_pos = end_image.position[i];
-                if (start_pos.position === end_pos.position) {
-                  continue;
-                }
-                ((base = changed != null ? changed : changed = {}).position != null ? base.position : base.position = [])[i] = end_pos;
-              }
+              compare_length_list('position');
             }
-            ref1 = start_image.stops;
-            for (stop_index = l = 0, len2 = ref1.length; l < len2; stop_index = ++l) {
-              start_stop = ref1[stop_index];
+            ref = start_image.stops;
+            for (stop_index = k = 0, len1 = ref.length; k < len1; stop_index = ++k) {
+              start_stop = ref[stop_index];
               end_stop = end_image.stops[stop_index];
               changed_stop = null;
               change_stop = function change_stop(prop_name) {
@@ -612,7 +621,7 @@ exports.default = function (arg) {
                 change_stop('color');
               }
               if (changed_stop) {
-                ((base1 = changed != null ? changed : changed = {}).stops != null ? base1.stops : base1.stops = [])[stop_index] = changed_stop;
+                ((base = changed != null ? changed : changed = {}).stops != null ? base.stops : base.stops = [])[stop_index] = changed_stop;
               }
             }
             if (changed) {
@@ -693,13 +702,42 @@ exports.default = function (arg) {
         }();
         _change = [];
         for (image_index = j = 0, len = start.length; j < len; image_index = ++j) {
-          image = start[image_index];
+          start_image = start[image_index];
           changing_vals_for_image = changing_vals.all.slice(0).concat((ref = changing_vals[image_index]) != null ? ref : []);
-          if (is_string(image)) {
+          if (is_string(start_image)) {
             continue;
           }
-          stops = image.stops, angle = image.angle, position = image.position;
+          stops = start_image.stops, angle = start_image.angle;
           changed = null;
+          detect_length_list_changes = function detect_length_list_changes(prop_name) {
+            var end_change, k, len1, pos_index, position, ref1, ref2, results, start_change, start_prop, type, unit;
+            if (!((ref1 = start_prop = start_image[prop_name]) != null ? ref1.length : void 0)) {
+              return;
+            }
+            results = [];
+            for (k = 0, len1 = changing_vals_for_image.length; k < len1; k++) {
+              ref2 = changing_vals_for_image[k], start_change = ref2.start, end_change = ref2.end, type = ref2.type;
+              if (type === 'length') {
+                results.push(function () {
+                  var base, l, len2, ref3, results1;
+                  results1 = [];
+                  for (pos_index = l = 0, len2 = start_prop.length; l < len2; pos_index = ++l) {
+                    ref3 = start_prop[pos_index], position = ref3.position, unit = ref3.unit;
+                    if (start_change.position === position && start_change.unit === unit) {
+                      results1.push(((base = changed != null ? changed : changed = {})[prop_name] != null ? base[prop_name] : base[prop_name] = [])[pos_index] = {
+                        position: end_change.position,
+                        unit: end_change.unit
+                      });
+                    }
+                  }
+                  return results1;
+                }());
+              }
+            }
+            return results;
+          };
+          detect_length_list_changes('extent');
+          detect_length_list_changes('position');
           if (angle != null) {
             for (k = 0, len1 = changing_vals_for_image.length; k < len1; k++) {
               ref1 = changing_vals_for_image[k], start_change = ref1.start, end_change = ref1.end, type = ref1.type;
@@ -710,27 +748,11 @@ exports.default = function (arg) {
               }
             }
           }
-          if (position != null) {
-            for (l = 0, len2 = changing_vals_for_image.length; l < len2; l++) {
-              ref2 = changing_vals_for_image[l], start_change = ref2.start, end_change = ref2.end, type = ref2.type;
-              if (type === 'length') {
-                for (pos_index = m = 0, len3 = position.length; m < len3; pos_index = ++m) {
-                  ref3 = position[pos_index], _position = ref3.position, unit = ref3.unit;
-                  if (start_change.position === _position && start_change.unit === unit) {
-                    ((base = changed != null ? changed : changed = {}).position != null ? base.position : base.position = [])[pos_index] = {
-                      position: end_change.position,
-                      unit: end_change.unit
-                    };
-                  }
-                }
-              }
-            }
-          }
-          for (stop_index = n = 0, len4 = stops.length; n < len4; stop_index = ++n) {
+          for (stop_index = l = 0, len2 = stops.length; l < len2; stop_index = ++l) {
             stop = stops[stop_index];
             changed_stop = null;
-            for (o = 0, len5 = changing_vals_for_image.length; o < len5; o++) {
-              ref4 = changing_vals_for_image[o], start_change = ref4.start, end_change = ref4.end, type = ref4.type;
+            for (m = 0, len3 = changing_vals_for_image.length; m < len3; m++) {
+              ref2 = changing_vals_for_image[m], start_change = ref2.start, end_change = ref2.end, type = ref2.type;
               switch (type) {
                 case 'length':
                   position = start_change.position, unit = start_change.unit;
@@ -772,7 +794,7 @@ exports.default = function (arg) {
               }
             }
             if (changed_stop) {
-              ((base1 = changed != null ? changed : changed = {}).stops != null ? base1.stops : base1.stops = [])[stop_index] = changed_stop;
+              ((base = changed != null ? changed : changed = {}).stops != null ? base.stops : base.stops = [])[stop_index] = changed_stop;
             }
           }
           if (changed) {
@@ -1025,21 +1047,57 @@ exports.default = function (arg) {
     pre_stops_css: pre_stops_css_linear_gradient
   }));
   parse_radial_gradient = function parse_radial_gradient(arg1) {
-    var all, extent1, extent2, extent_regex_chunk, function_name, image, keyword1, keyword2, match, position1, position2, position_regex_chunk, ref, shape1, shape2, shape_regex_chunk, single_position_regex_chunk, stops_str, unit1, unit2;
+    var all, extend_second_unit1, extent_first_position1, extent_first_position2, extent_first_unit1, extent_first_unit2, extent_keyword1, extent_keyword2, extent_regex_chunk, extent_second_position1, extent_second_position2, extent_second_unit2, function_name, image, keyword1, keyword2, match, position1, position2, position_regex_chunk, ref, ref1, ref2, ref3, ref4, ref5, ref6, shape1, shape2, shape_regex_chunk, single_position_regex_chunk, stops_str, unit1, unit2;
     image = arg1.image, function_name = arg1.function_name;
     shape_regex_chunk = regex_chunk_str(/(circle|ellipse)/);
-    extent_regex_chunk = regex_chunk_str(/(closest-corner|closest-side|farthest-corner|farthest-side)/);
+    extent_regex_chunk = regex_chunk_str(RegExp("(?:(closest-corner|closest-side|farthest-corner|farthest-side)|" + length_regex_chunk + "(?:\\s+" + length_regex_chunk + ")?)"));
     single_position_regex_chunk = regex_chunk_str(RegExp("(?:(left|center|right|top|bottom)|" + length_regex_chunk + ")"));
     position_regex_chunk = regex_chunk_str(RegExp("at\\s+" + single_position_regex_chunk + "(?:\\s+" + single_position_regex_chunk + ")?"));
     match = RegExp("^\\s*" + function_name + "\\(\\s*(?:(?:" + shape_regex_chunk + "(?:\\s+" + extent_regex_chunk + ")?|" + extent_regex_chunk + "(?:\\s+" + shape_regex_chunk + ")?)?(?:\\s*" + position_regex_chunk + ")?\\s*,\\s*)?(.+)\\)\\s*$").exec(image);
     if (!match) {
       return image;
     }
-    all = match[0], shape1 = match[1], extent1 = match[2], extent2 = match[3], shape2 = match[4], keyword1 = match[5], position1 = match[6], unit1 = match[7], keyword2 = match[8], position2 = match[9], unit2 = match[10], stops_str = match[11];
+    all = match[0], shape1 = match[1], extent_keyword1 = match[2], extent_first_position1 = match[3], extent_first_unit1 = (ref = match[4]) != null ? ref : 'px', extent_second_position1 = match[5], extend_second_unit1 = (ref1 = match[6]) != null ? ref1 : 'px', extent_keyword2 = match[7], extent_first_position2 = match[8], extent_first_unit2 = (ref2 = match[9]) != null ? ref2 : 'px', extent_second_position2 = match[10], extent_second_unit2 = (ref3 = match[11]) != null ? ref3 : 'px', shape2 = match[12], keyword1 = match[13], position1 = match[14], unit1 = (ref4 = match[15]) != null ? ref4 : 'px', keyword2 = match[16], position2 = match[17], unit2 = (ref5 = match[18]) != null ? ref5 : 'px', stops_str = match[19];
     return {
       obj: {
-        shape: (ref = shape1 != null ? shape1 : shape2) != null ? ref : 'ellipse',
-        extent: extent1 != null ? extent1 : extent2,
+        shape: (ref6 = shape1 != null ? shape1 : shape2) != null ? ref6 : (extent_first_position1 != null || extent_first_position2 != null) && !(extent_second_position1 != null || extent_second_position2 != null) ? 'circle' : 'ellipse',
+        extent: function () {
+          var extent_keyword;
+          if (extent_keyword = extent_keyword1 != null ? extent_keyword1 : extent_keyword2) {
+            return extent_keyword;
+          }
+          if (extent_first_position1 != null) {
+            if (extent_second_position1 == null) {
+              return [{
+                position: parseFloat(extent_first_position1),
+                unit: extent_first_unit1
+              }];
+            }
+            return [{
+              position: parseFloat(extent_first_position1),
+              unit: extent_first_unit1
+            }, {
+              position: parseFloat(extent_second_position1),
+              unit: extent_second_unit1
+            }];
+          }
+          if (extent_first_position2 == null) {
+            return;
+          }
+          if (extent_second_position2 == null) {
+            return [{
+              position: parseFloat(extent_first_position2),
+              unit: extent_first_unit2
+            }];
+          }
+          return [{
+            position: parseFloat(extent_first_position2),
+            unit: extent_first_unit2
+          }, {
+            position: parseFloat(extent_second_position2),
+            unit: extent_second_unit2
+          }];
+        }(),
         position: function () {
           var first, first_is_second, from_keyword, second;
           from_keyword = function from_keyword(keyword) {
@@ -1093,29 +1151,43 @@ exports.default = function (arg) {
     };
   };
   pre_stops_css_radial_gradient = function pre_stops_css_radial_gradient(arg1) {
-    var angle_change, angle_unit, current_pos, end_change, extent, get_current_image, pos, pos_index, position, position_change, ref, shape, start_gradient;
+    var changed_extent, changed_length_list_str, changed_position, current_extent, end_change, get_current_image, length_list_str, pos, ref, shape, start_gradient;
     start_gradient = arg1.start_gradient, end_change = arg1.end_change, pos = arg1.pos, get_current_image = arg1.get_current_image;
-    angle_unit = start_gradient.angle_unit;
-    "" + ((angle_change = end_change != null ? end_change.angle : void 0) ? scaled({
-      start: start_gradient.angle,
-      end: angle_change,
-      pos: pos
-    }) : get_current_image().angle) + angle_unit + ", ";
-    shape = start_gradient.shape, extent = start_gradient.extent, position = start_gradient.position;
-    return "" + shape + (extent ? " " + extent : '') + " at " + ((position_change = end_change != null ? end_change.position : void 0) ? function () {
-      var j, len, ref, results;
-      ref = [0, 1];
-      results = [];
-      for (j = 0, len = ref.length; j < len; j++) {
-        pos_index = ref[j];
-        results.push("" + (position_change[pos_index] ? scaled({
-          start: position[pos_index].position,
-          end: position_change[pos_index].position,
-          pos: pos
-        }) : get_current_image().position[pos_index].position) + position[pos_index].unit);
+    shape = start_gradient.shape;
+    changed_length_list_str = function changed_length_list_str(prop_name) {
+      var dim_change, dim_index, prop_change, start_dim;
+      if (!(prop_change = end_change != null ? end_change[prop_name] : void 0)) {
+        return;
       }
-      return results;
-    }().join(' ') : ((ref = get_current_image(), current_pos = ref.position, ref), "" + current_pos[0].position + current_pos[0].unit + " " + current_pos[1].position + current_pos[1].unit)) + ", ";
+      return function () {
+        var j, len, ref, ref1, results;
+        ref = start_gradient[prop_name];
+        results = [];
+        for (dim_index = j = 0, len = ref.length; j < len; dim_index = ++j) {
+          start_dim = ref[dim_index];
+          dim_change = prop_change[dim_index];
+          results.push("" + (dim_change ? scaled({
+            start: start_dim.position,
+            end: dim_change.position,
+            pos: pos
+          }) : get_current_image()[prop_name][dim_index].position) + ((ref1 = dim_change != null ? dim_change.unit : void 0) != null ? ref1 : start_dim.unit));
+        }
+        return results;
+      }().join(' ');
+    };
+    length_list_str = function length_list_str(lengths) {
+      var position, unit;
+      return function () {
+        var j, len, ref, results;
+        results = [];
+        for (j = 0, len = lengths.length; j < len; j++) {
+          ref = lengths[j], position = ref.position, unit = ref.unit;
+          results.push("" + position + unit);
+        }
+        return results;
+      }().join(' ');
+    };
+    return "" + (!((ref = start_gradient.extent) != null ? ref.length : void 0) ? shape : '') + ((changed_extent = changed_length_list_str('extent')) ? " " + changed_extent : (current_extent = get_current_image().extent) ? " " + (is_array(current_extent) ? length_list_str(current_extent) : current_extent) : '') + " at " + ((changed_position = changed_length_list_str('position')) ? changed_position : length_list_str(get_current_image().position)) + ", ";
   };
   register_animation_handler(gradient_handler({
     hook_name: 'radialGradient',
@@ -1154,12 +1226,17 @@ exports.default = function (arg) {
 
 var extend,
     extended,
+    is_array,
     is_string,
     map,
     slice = [].slice;
 
 is_string = function is_string(obj) {
   return Object.prototype.toString.call(obj) === '[object String]';
+};
+
+is_array = function is_array(obj) {
+  return Object.prototype.toString.call(obj) === '[object Array]';
 };
 
 map = function map(arr, clb) {
