@@ -1117,7 +1117,7 @@ export default ({hook, Color}) ->
             .position
         }#{ dim_change?.unit ? start_dim.unit }"
       ).join ' '
-    length_list_str = (lengths) ->
+    length_list_str = (lengths=[]) ->
       (for {position, unit} in lengths
         "#{position}#{unit}"
       ).join ' '

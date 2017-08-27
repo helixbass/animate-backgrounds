@@ -1177,6 +1177,9 @@ exports.default = function (arg) {
     };
     length_list_str = function length_list_str(lengths) {
       var position, unit;
+      if (lengths == null) {
+        lengths = [];
+      }
       return function () {
         var j, len, ref, results;
         results = [];
